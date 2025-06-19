@@ -13,8 +13,8 @@ A simple, robust command-line chatbot built in Python using the Hugging Face lib
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/myselfmankar/Assignments_Interview/banao_ai.git
-    cd task1
+    git clone https://github.com/myselfmankar/Assignments_Interview.git
+    cd banao_ai/task1
     ```
 
 2.  **Create a virtual environment (recommended):**
