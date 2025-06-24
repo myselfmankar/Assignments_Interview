@@ -1,0 +1,17 @@
+
+tracker_type: botsort 
+track_high_thresh: 0.25 
+track_low_thresh: 0.1 
+new_track_thresh: 0.25 
+track_buffer: 30 
+match_thresh: 0.8 
+fuse_score: True 
+# min_box_area: 10  # threshold for min box areas(for tracker evaluation, not used for now)
+
+# BoT-SORT settings
+gmc_method: sparseOptFlow # method of global motion compensation
+# ReID model related thresh
+proximity_thresh: 0.3  # 0.5 to 0.3
+appearance_thresh: 0.85 # 0.8 to 0.85
+with_reid: True # False to True
+model: auto # uses native features if detector is YOLO else yolo11n-cls.pt
