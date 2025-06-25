@@ -1,47 +1,66 @@
-# ATG Technical Assignment: Self-Healing Classification DAG
+# Self-Healing Classification DAG with Fine-Tuned Model
 
-**Status:** 🟩 **Submission on time. Project implementation in progress.**
+**Author:** Vaishnav Mankar
 
-**Last Updated:** [Date of your submission]
-
----
-
-## Task Overview
-
-This project implements a LangGraph-based classification pipeline with a self-healing mechanism. It uses a fine-tuned transformer model to make predictions and incorporates a fallback strategy for low-confidence results, prioritizing correctness and reliability.
+<!-- **Video Walkthrough:** [Link to your Loom/YouTube video] -->
 
 ---
 
-## Part 1: Fine-Tuned Model (Completed)
+## 🚀 Live Demo
 
-The core of this pipeline is a sentiment analysis model fine-tuned for the task.
+This project in action, demonstrating both a high-confidence prediction and a low-confidence fallback to a zero-shot model.
 
-*   **Base Model:** `distilbert-base-uncased`
-*   **Technique:** Parameter-Efficient Fine-Tuning (PEFT) using LoRA. This allows for efficient training by only updating a small fraction of the model's parameters.
-*   **Dataset:** `sst2` (Stanford Sentiment Treebank) from the GLUE benchmark.
-*   **Hugging Face Hub:** The fine-tuned model adapter is publicly available on the Hugging Face Hub at the following link:
-    *   **[myselfmankar/distilbert-base-sst2-lora](https://huggingface.co/myselfmankar/distilbert-base-sst2-lora)** *(<-- Replace with your actual Hub link!)*
+![CLI Demo](assets/output_gif.gif)
 
 ---
 
-## Part 2: LangGraph DAG (Implementation in Progress)
+## 🏛️ Architecture
 
-The main application logic is being built using LangGraph to create a robust, stateful agent. The code for this will be pushed tonight.
+The application is built as a stateful graph using LangGraph. The graph orchestrates the flow of data between the primary model, a confidence check, and a fallback model.
 
-The graph is composed of the following nodes:
-
-1.  **`InferenceNode`**: Loads the fine-tuned model from the Hub and runs the initial classification.
-2.  **`ConfidenceCheckNode` (Conditional Edge)**: Evaluates the model's confidence score. If it's above a set threshold (e.g., 90%), the prediction is accepted. If not, it triggers the fallback mechanism.
-3.  **`FallbackNode`**: Asks the user for clarification via a command-line interface to ensure the final output is correct.
+![LangGraph Architecture](assets/langgraph_image.png)
 
 ---
 
-## Deliverables (To be pushed tonight)
+## ✨ Key Features
 
-*   [x] **Fine-tuned Model:** Available on Hugging Face Hub.
-*   [x] **Source Code:** Python scripts for the LangGraph DAG and CLI.
-*   [x] **README.md:** This file (will be updated).
-*   [x] **Log File:** Example log file from a CLI session.
-*   [ ] **Demo Video:** A short video walkthrough.
+- **Fine-Tuned Primary Model:** `distilbert-base-uncased` fine-tuned on the `sst2` dataset using PEFT/LoRA for efficient training.
+- **Self-Healing Fallback:** If the primary model's confidence is below 90%, the system automatically uses a `facebook/bart-large-mnli` zero-shot model as a robust backup.
+- **Structured Logging:** All events are logged to `log_file.log` with timestamps and severity levels for easy debugging.
+- **Clean Architecture:** The application logic is separated by concern into `src/model_loader`, `src/graph_builder`, and `src/logger_setup`.
 
 ---
+
+## ⚙️ How to Run
+
+1.  **Clone the Repository:**
+    ```bash
+    git clone https://github.com/myselfmankar/Assignments_Interview.git
+    cd banao_ai/task2
+    ```
+
+2.  **Create a Virtual Environment & Install Dependencies:**
+    ```bash
+    python -m venv venv
+    source venv/bin/activate # On Windows: venv\Scripts\activate
+    pip install -r requirements.txt
+    ```
+
+3.  **Set Up Environment Variables:**
+    *   Create a `.env` file in the root directory. You can copy `.env.example`.
+    *   Add your Hugging Face Hub access token to this file: `HUGGING_FACE_HUB_TOKEN="hf_YOUR_TOKEN_HERE"`
+
+4.  **Run the Application:**
+    ```bash
+    python src/main.py
+    ```
+
+---
+
+## 🧠 Model Fine-Tuning
+
+The primary model is a fine-tuned adapter available on the Hugging Face Hub.
+
+- **Hub Link:** [myslefmankar/distilbert-base-sst2-lora](https://huggingface.co/myselfmankar/distilbert-base-sst2-lora)
+- **Training Process:** The complete fine-tuning process, performed in Google Colab, is documented in the following notebook:
+  - [`notebooks/fine_tune_distilbert.ipynb`](notebooks/fine_tune_distilbert.ipynb)

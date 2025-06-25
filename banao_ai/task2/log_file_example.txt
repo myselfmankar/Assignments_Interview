@@ -1,0 +1,54 @@
+2025-06-25 22:50:18,684 - ClassificationDAG_Logger - INFO - Loading primary model from 'myselfmankar/distilbert-base-sst2-lora'...
+2025-06-25 22:51:55,464 - ClassificationDAG_Logger - INFO - Primary model loaded successfully.
+2025-06-25 22:51:55,465 - ClassificationDAG_Logger - INFO - Loading fallback zero-shot model 'facebook/bart-large-mnli'...
+2025-06-25 23:00:38,135 - ClassificationDAG_Logger - INFO -  Fallback model loaded successfully.
+2025-06-25 23:00:38,138 - ClassificationDAG_Logger - INFO - LangGraph compiled.
+2025-06-25 23:01:35,570 - ClassificationDAG_Logger - INFO - User Input: 'It's a great movie'
+2025-06-25 23:01:35,639 - ClassificationDAG_Logger - INFO - 
+--- INFERENCE (Primary Model) ---
+2025-06-25 23:09:19,277 - ClassificationDAG_Logger - INFO - Loading primary model from 'myselfmankar/distilbert-base-sst2-lora'...
+2025-06-25 23:09:24,905 - ClassificationDAG_Logger - INFO - Primary model loaded successfully.
+2025-06-25 23:09:24,905 - ClassificationDAG_Logger - INFO - Loading fallback zero-shot model 'facebook/bart-large-mnli'...
+2025-06-25 23:09:26,170 - ClassificationDAG_Logger - INFO -  Fallback model loaded successfully.
+2025-06-25 23:09:26,171 - ClassificationDAG_Logger - INFO - LangGraph compiled.
+2025-06-25 23:10:21,124 - ClassificationDAG_Logger - INFO - User Input: 'it a good movie'
+2025-06-25 23:10:21,135 - ClassificationDAG_Logger - INFO - 
+--- INFERENCE (Primary Model) ---
+2025-06-25 23:10:21,235 - ClassificationDAG_Logger - INFO -   Prediction: 'Positive' | Confidence: 99.74%
+2025-06-25 23:10:21,236 - ClassificationDAG_Logger - INFO - 
+--- CONFIDENCE CHECK ---
+2025-06-25 23:10:21,236 - ClassificationDAG_Logger - INFO -  Confidence 99.74% is high. Accepting prediction.
+2025-06-25 23:10:21,237 - ClassificationDAG_Logger - INFO - 
+--- ACCEPTING ---
+2025-06-25 23:10:21,238 - ClassificationDAG_Logger - INFO -  Confidence is high. Final decision matches model prediction.
+2025-06-25 23:10:21,238 - ClassificationDAG_Logger - INFO - --- FINAL OUTPUT ---
+2025-06-25 23:10:21,238 - ClassificationDAG_Logger - INFO - Reviewed Text: 'it a good movie'
+2025-06-25 23:10:21,239 - ClassificationDAG_Logger - INFO - Final Label: Positive
+2025-06-25 23:10:50,034 - ClassificationDAG_Logger - INFO - User Input: 'it's a good movie but i don't like the actress'
+2025-06-25 23:10:50,038 - ClassificationDAG_Logger - INFO - 
+--- INFERENCE (Primary Model) ---
+2025-06-25 23:10:50,104 - ClassificationDAG_Logger - INFO -   Prediction: 'Negative' | Confidence: 92.18%
+2025-06-25 23:10:50,105 - ClassificationDAG_Logger - INFO - 
+--- CONFIDENCE CHECK ---
+2025-06-25 23:10:50,105 - ClassificationDAG_Logger - INFO -  Confidence 92.18% is high. Accepting prediction.
+2025-06-25 23:10:50,106 - ClassificationDAG_Logger - INFO - 
+--- ACCEPTING ---
+2025-06-25 23:10:50,106 - ClassificationDAG_Logger - INFO -  Confidence is high. Final decision matches model prediction.
+2025-06-25 23:10:50,107 - ClassificationDAG_Logger - INFO - --- FINAL OUTPUT ---
+2025-06-25 23:10:50,107 - ClassificationDAG_Logger - INFO - Reviewed Text: 'it's a good movie but i don't like the actress'
+2025-06-25 23:10:50,107 - ClassificationDAG_Logger - INFO - Final Label: Negative
+2025-06-25 23:11:03,681 - ClassificationDAG_Logger - INFO - User Input: 'he is good but i hate him'
+2025-06-25 23:11:03,687 - ClassificationDAG_Logger - INFO - 
+--- INFERENCE (Primary Model) ---
+2025-06-25 23:11:03,765 - ClassificationDAG_Logger - INFO -   Prediction: 'Negative' | Confidence: 66.41%
+2025-06-25 23:11:03,766 - ClassificationDAG_Logger - INFO - 
+--- CONFIDENCE CHECK ---
+2025-06-25 23:11:03,766 - ClassificationDAG_Logger - INFO -  Confidence 66.41% is below threshold. Triggering fallback.
+2025-06-25 23:11:03,768 - ClassificationDAG_Logger - INFO - 
+--- FALLBACK (Zero-Shot Model) ---
+2025-06-25 23:11:03,768 - ClassificationDAG_Logger - INFO -   Primary model confidence was low. Consulting backup model...
+2025-06-25 23:11:04,404 - ClassificationDAG_Logger - INFO -  Backup Model Prediction: 'Negative' | Confidence: 90.81%
+2025-06-25 23:11:04,405 - ClassificationDAG_Logger - INFO - --- FINAL OUTPUT ---
+2025-06-25 23:11:04,406 - ClassificationDAG_Logger - INFO - Reviewed Text: 'he is good but i hate him'
+2025-06-25 23:11:04,406 - ClassificationDAG_Logger - INFO - Final Label: Negative
+2025-06-25 23:11:04,406 - ClassificationDAG_Logger - WARNING - Final decision was corrected via fallback mechanism.

@@ -1,0 +1,7 @@
+transformers 
+torch 
+peft 
+accelerate 
+langgraph 
+huggingface_hub
+python-dotenv
