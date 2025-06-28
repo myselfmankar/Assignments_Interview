@@ -2,7 +2,7 @@
 
 **Author:** Vaishnav Mankar
 
-<!-- **Video Walkthrough:** [Link to your Loom/YouTube video] -->
+**Video Walkthrough:** [Youtube](https://youtu.be/xI6YNZ6UMhc)
 ---
 
 

@@ -16,6 +16,7 @@ from prompts import (
 from dotenv import load_dotenv
 load_dotenv()
 
+max_rounds = 8
 
 class GraphState(TypedDict):
     topic: str
@@ -66,7 +67,7 @@ def judge_node(state: GraphState) -> dict:
     
     message_list = [SystemMessage(content=judge_system_prompt), HumanMessage(content=human_prompt)]
     
-    print("--- Calling Judge ---")
+    print("\n--- Calling Judge ---\n")
     response = llm.invoke(message_list)
     
     try:
@@ -84,7 +85,7 @@ def judge_node(state: GraphState) -> dict:
 
 def router(state: GraphState) -> str:
     """Router to determine the next speaker based on the round number."""
-    if state["round_number"] >= 8:
+    if state["round_number"] >= max_rounds:
         return "judge_node"
     return state["next_speaker"]
 
