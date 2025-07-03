@@ -98,7 +98,7 @@ Kindly Use the following  `calude-config-desktop.json`:
 {
   "mcpServers": {
     "Educhain Engine": {
-      "command": "X:\path_to_project\\.venv\\Scripts\\mcp.exe",
+      "command": "X:\\path_to_project\\.venv\\Scripts\\mcp.exe",
       "args": [
         "run",
         "D:\\path_to_project\\server.py"
