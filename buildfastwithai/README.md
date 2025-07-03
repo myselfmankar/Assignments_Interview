@@ -39,8 +39,7 @@ This project implements an MCP (Model Control Protocol) server that leverages th
 
 ```
 build_fast_with_ai/
-├── assets/
-│   └── demo.gif                
+├── demo.gif                
 ├── server.py                   
 ├── educhain_engine.py          
 ├── requirements.txt            
