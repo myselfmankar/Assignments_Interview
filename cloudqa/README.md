@@ -1,18 +1,18 @@
 # CloudQA Practical Assessment: Resilient Web Automation & AI Test Agent
 
-This repository contains production-ready solutions for both tasks of the CloudQA evaluation.
+This repository contains assessment implementations for both tasks of the CloudQA evaluation.
 
 ---
 
 ## 📂 Repository Structure
 
 - [`task1-dotnet/`](task1-dotnet/): **Adaptive Form Automation (C# & Selenium 4)**
-  - Self-healing automation for dynamic web forms.
-  - Handles mutations in attributes, layout reordering, and boundary obstacles (Root DOM, open Shadow DOMs, deeply nested shadow roots 1–6, and IFrames with or without IDs).
+  - Semantic, verification-driven automation for dynamic web forms.
+  - Handles mutations in attributes, layout reordering, and boundary obstacles (Root DOM, open Shadow DOMs, open Shadow DOMs and nested IFrames (bounded to four frame levels)).
 - [`task2-agent/`](task2-agent/): **Plain-English Automated Browser Test Agent (Python, Selenium & Gemini)**
   - Translates unstructured plain-English test instructions into autonomous browser execution plans.
-  - Zero hardcoding; works dynamically across unseen websites (`phptravels.com/demo`, `example.com`, etc.).
-  - Reuses Task 1's deep Shadow DOM piercer, semantic accessibility locator, and spatial proximity engine for reliable execution.
+  - Uses an LLM-generated, allow-listed action plan and semantic element matching; compatibility depends on each site's accessible DOM (`phptravels.com/demo`, `example.com`, etc.).
+  - Uses semantic element matching, open Shadow DOM traversal, and recursive iframe discovery.
 
 ---
 
@@ -43,3 +43,10 @@ python agent.py --url https://phptravels.com/demo --test "Verify that the demo r
 ## 📖 Detailed Documentation
 - For Task 1 architectural details, see [task1-dotnet/README.md](task1-dotnet/README.md).
 - For Task 2 agent architecture and options, see [task2-agent/README.md](task2-agent/README.md).
+
+## Prerequisites
+
+- Task 1: .NET SDK 10.0 and Google Chrome.
+- Task 2: Python 3.10+, Google Chrome, and a Gemini API key for end-to-end execution.
+
+See each task README for exact setup commands, supported page structures, test strategy, and limitations. The implementations are assessment prototypes, not universal or production-certified automation frameworks.
