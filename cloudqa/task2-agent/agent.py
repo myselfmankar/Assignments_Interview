@@ -70,7 +70,7 @@ const isVisible = (el) => {
 const elements = getAllDeep(document.body).filter(el => {
     const tag = el.tagName.toLowerCase();
     const role = (el.getAttribute('role') || '').toLowerCase();
-    return ['input', 'button', 'select', 'textarea', 'a', 'label'].includes(tag)
+    return ['input', 'button', 'select', 'textarea', 'a'].includes(tag)
         || ['button', 'link', 'combobox', 'tab', 'textbox'].includes(role)
         || el.getAttribute('aria-haspopup') === 'listbox';
 }).filter(isVisible);
