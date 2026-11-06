@@ -321,8 +321,10 @@ def capture_page_snapshot(driver: webdriver.Chrome) -> dict[str, Any]:
             return
         frames = driver.find_elements(By.TAG_NAME, "iframe")
         for frame in frames:
+            switched = False
             try:
                 driver.switch_to.frame(frame)
+                switched = True
                 frame_controls = driver.execute_script(script) or []
                 for item in frame_controls:
                     item["in_frame"] = True
@@ -331,10 +333,11 @@ def capture_page_snapshot(driver: webdriver.Chrome) -> dict[str, Any]:
                 walk_frames(depth + 1, max_depth)
                 driver.switch_to.parent_frame()
             except Exception:
-                try:
-                    driver.switch_to.parent_frame()
-                except Exception:
-                    driver.switch_to.default_content()
+                if switched:
+                    try:
+                        driver.switch_to.parent_frame()
+                    except Exception:
+                        driver.switch_to.default_content()
 
     driver.switch_to.default_content()
     controls.extend(driver.execute_script(script) or [])
