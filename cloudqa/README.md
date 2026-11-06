@@ -8,11 +8,11 @@ This repository contains assessment implementations for both tasks of the CloudQ
 
 - [`task1-dotnet/`](task1-dotnet/): **Adaptive Form Automation (C# & Selenium 4)**
   - Semantic, verification-driven automation for dynamic web forms.
-  - Handles mutations in attributes, layout reordering, and boundary obstacles (Root DOM, open Shadow DOMs, open Shadow DOMs and nested IFrames (bounded to four frame levels)).
+  - Handles attribute and layout changes across the standard DOM, accessible open Shadow DOMs, and nested IFrames (bounded to four frame levels).
 - [`task2-agent/`](task2-agent/): **Plain-English Automated Browser Test Agent (Python, Selenium & Gemini)**
   - Translates unstructured plain-English test instructions into autonomous browser execution plans.
-  - Uses an LLM-generated, allow-listed action plan and semantic element matching; compatibility depends on each site's accessible DOM (`phptravels.com/demo`, `example.com`, etc.).
-  - Uses semantic element matching, open Shadow DOM traversal, and recursive iframe discovery.
+  - Uses an LLM-generated, allow-listed action plan and semantic element matching; compatibility depends on each site's accessible DOM.
+  - Uses semantic element matching, open Shadow DOM traversal, and recursive iframe discovery (bounded to four levels).
 
 ---
 
