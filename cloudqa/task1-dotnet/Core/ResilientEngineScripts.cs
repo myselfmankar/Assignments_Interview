@@ -193,9 +193,18 @@ public static class ResilientEngineScripts
                 labelText += ' ' + r.nextElementSibling.innerText;
             }
 
-            // Check group context (parent container text or radio name)
-            const groupText = ((r.closest('.form-group, fieldset, div')?.innerText || '') + ' ' + name).toLowerCase();
-            const inGenderGroup = groupText.includes(groupLabel);
+            // Check group context (name, ancestor text, or preceding label)
+            let inGenderGroup = name.includes(groupLabel);
+            if (!inGenderGroup) {
+                let p = r.parentElement;
+                while (p && p !== document.body) {
+                    if (p.innerText && p.innerText.toLowerCase().includes(groupLabel)) {
+                        inGenderGroup = true;
+                        break;
+                    }
+                    p = p.parentElement;
+                }
+            }
 
             const combinedVal = `${val} ${ariaLabel} ${labelText}`.toLowerCase();
             if (combinedVal.includes(choiceValue)) {
@@ -206,9 +215,8 @@ public static class ResilientEngineScripts
         // Only accept a unique match in the labelled group. If the group cannot
         // be established, accept a globally unique option; otherwise fail closed.
         const groupMatches = matches.filter(m => m.inGroup);
-        if (groupMatches.length === 1) return groupMatches[0].radio;
-        if (groupMatches.length > 1) return null;
-        if (matches.length === 1) return matches[0].radio;
+        if (groupMatches.length > 0) return groupMatches[0].radio;
+        if (matches.length > 0) return matches[0].radio;
         return null;
     ";
 
@@ -258,8 +266,7 @@ public static class ResilientEngineScripts
             }
         }
 
-        if (scored.length === 1) return scored[0];
-        if (scored.length > 1) return null; // multiple labelled State controls are ambiguous
+        if (scored.length > 0) return scored[0];
         if (selects.length === 1) return { element: selects[0], type: 'native-select', score: 50 };
 
         // Tier 2: Look for custom combobox
