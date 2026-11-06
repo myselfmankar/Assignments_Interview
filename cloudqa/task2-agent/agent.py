@@ -71,7 +71,8 @@ const elements = getAllDeep(document.body).filter(el => {
     const tag = el.tagName.toLowerCase();
     const role = (el.getAttribute('role') || '').toLowerCase();
     return ['input', 'button', 'select', 'textarea', 'a', 'label'].includes(tag)
-        || ['button', 'link', 'combobox', 'tab', 'textbox'].includes(role);
+        || ['button', 'link', 'combobox', 'tab', 'textbox'].includes(role)
+        || el.getAttribute('aria-haspopup') === 'listbox';
 }).filter(isVisible);
 
 function getSemantics(el) {
@@ -438,25 +439,32 @@ def make_plan(test_case: str, snapshot: dict[str, Any]) -> dict[str, Any]:
     raise last_exc or RuntimeError("Failed to generate plan with available models.")
 
 
-def _find_in_current_context(driver: webdriver.Chrome, target: str, expected_type: str):
-    """Search this document and recursively nested frames; leave context at a match."""
+def _find_in_current_context(driver: webdriver.Chrome, target: str, expected_type: str,
+                             depth: int = 0, max_depth: int = 4):
+    """Search this document and nested frames up to max_depth; leave context at a match."""
     element = driver.execute_script(SEMANTIC_LOCATOR_SCRIPT, target, expected_type)
     if element:
         return element
 
+    if depth >= max_depth:
+        return None
     for frame in driver.find_elements(By.TAG_NAME, "iframe"):
+        switched = False
         try:
             driver.switch_to.frame(frame)
-            element = _find_in_current_context(driver, target, expected_type)
+            switched = True
+            element = _find_in_current_context(driver, target, expected_type, depth + 1, max_depth)
             if element:
                 return element
-            driver.switch_to.parent_frame()
+            if switched:
+                driver.switch_to.parent_frame()
         except Exception:
             # A stale or inaccessible frame should not prevent searching siblings.
-            try:
-                driver.switch_to.parent_frame()
-            except Exception:
-                driver.switch_to.default_content()
+            if switched:
+                try:
+                    driver.switch_to.parent_frame()
+                except Exception:
+                    driver.switch_to.default_content()
     return None
 
 
