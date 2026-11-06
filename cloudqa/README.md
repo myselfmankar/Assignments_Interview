@@ -21,14 +21,14 @@ This repository contains assessment implementations for both tasks of the CloudQ
 ### Task 1: Resilient Form Automation (C# .NET)
 ```powershell
 # Run against CloudQA Practice Form
-dotnet run --project task1-dotnet
+dotnet run --project cloudqa/task1-dotnet/AdaptiveFormAutomation.csproj
 ```
 *Configurable via environment variables: `TARGET_URL`, `FIRST_NAME`, `GENDER`, `STATE`, `HEADLESS`.*
 
 ### Task 2: Plain-English Browser Agent (Python)
 ```powershell
 # 1. Install dependencies
-cd task2-agent
+cd cloudqa/task2-agent
 pip install -r requirements.txt
 
 # 2. Set your Gemini API key
