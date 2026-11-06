@@ -382,7 +382,7 @@ public static class ResilientEngineScripts
     public const string VerifyRadioSelectedScript = @"
         const el = arguments[0];
         if (!el) return false;
-        if (el.matches && el.matches('input[type="radio"]')) return el.checked === true;
+        if (el.matches && el.matches('input[type=""radio""]')) return el.checked === true;
         if ((el.getAttribute('role') || '').toLowerCase() === 'radio') {
             return el.getAttribute('aria-checked') === 'true';
         }
@@ -391,7 +391,7 @@ public static class ResilientEngineScripts
             const root = el.getRootNode ? el.getRootNode() : document;
             const input = root.getElementById ? root.getElementById(id) :
                 (root.querySelector ? root.querySelector('#' + CSS.escape(id)) : null);
-            if (input && input.matches('input[type="radio"]')) return input.checked === true;
+            if (input && input.matches('input[type=""radio""]')) return input.checked === true;
         }
         return false;
     ";
