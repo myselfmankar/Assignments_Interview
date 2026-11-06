@@ -12,7 +12,7 @@ Automate testing for **First Name** (text box), **Gender** (radio button), and *
 
 ### Key Mechanisms
 1. **Semantic & Accessibility-First Resolution:**
-   Rather than binding to brittle selectors (fixed XPaths or IDs), elements are identified via computed accessibility roles (`textbox`, `radio`, `combobox`), associated text labels (`<label>`, `aria-label`, `placeholder`), and token similarity.
+   Rather than binding to brittle selectors (fixed XPaths or IDs), elements are identified using semantic cues such as native element types, ARIA roles, associated text labels (`<label>`, `aria-label`, `placeholder`), and token similarity.
 2. **Open Shadow DOM Traversal:**
    Recursively searches accessible open shadow roots without hardcoding shadow host selectors. Closed shadow roots are not accessible through this approach.
 3. **Multi-Context Discovery (IFrames):**
@@ -20,7 +20,7 @@ Automate testing for **First Name** (text box), **Gender** (radio button), and *
 4. **Spatial Geometry Proximity Fallback:**
    When DOM hierarchy and attributes are scrambled, elements are resolved using bounding-box screen coordinates (`getBoundingClientRect()`) relative to their visual labels.
 5. **Synthetic Event Dispatching:**
-   Complements native Selenium interactions with synthetic DOM events (`focus`, `input`, `change`) to guarantee updates register across modern reactive frameworks.
+   Uses native Selenium interactions first and dispatches DOM events as a fallback; framework-specific behavior still requires runtime verification.
 
 ## Requirements and setup
 
