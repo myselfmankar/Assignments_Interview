@@ -32,7 +32,7 @@ flowchart TD
 
 ### 1. Install Dependencies
 ```bash
-cd task2-agent
+cd cloudqa/task2-agent
 pip install -r requirements.txt
 ```
 
@@ -51,7 +51,7 @@ python agent.py --url https://phptravels.com/demo --test "Verify that the demo r
 
 **Run against another site (compatibility depends on its accessible DOM):**
 ```bash
-python task2-agent/agent.py --url https://example.com --test "Verify that More information link is present on the page"
+python agent.py --url https://example.com --test "Verify that More information link is present on the page"
 ```
 Add `--headed` to run in a visible browser window.
 
