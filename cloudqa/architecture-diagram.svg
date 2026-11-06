@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 560" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b0f19" />
+      <stop offset="100%" stop-color="#141c2e" />
+    </linearGradient>
+
+    <!-- Card Gradients -->
+    <linearGradient id="blueCard" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+
+    <linearGradient id="accentCyan" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#818cf8" />
+    </linearGradient>
+
+    <linearGradient id="accentEmerald" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+
+    <!-- Drop Shadows -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.5" />
+    </filter>
+
+    <filter id="glowCyan" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#38bdf8" flood-opacity="0.6" />
+    </filter>
+
+    <!-- Arrow Marker -->
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#38bdf8" />
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#34d399" />
+    </marker>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="1100" height="560" rx="16" fill="url(#bgGrad)" stroke="#334155" stroke-width="1.5" />
+
+  <!-- ==================== LEFT: INPUT STREAMS ==================== -->
+  <!-- Top Left: Natural Language Input -->
+  <g transform="translate(60, 90)" filter="url(#shadow)">
+    <rect width="240" height="130" rx="12" fill="url(#blueCard)" stroke="#38bdf8" stroke-width="1.5" />
+    <circle cx="45" cy="45" r="20" fill="#38bdf8" fill-opacity="0.15" />
+    <path d="M35 45 C35 38 55 38 55 45 C55 52 45 50 45 56 M45 61 L45 62" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" />
+    <text x="80" y="45" fill="#f8fafc" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-weight="600" font-size="16">Autonomous Agent</text>
+    <text x="80" y="65" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-size="12">Natural Language Goal</text>
+    <rect x="25" y="85" width="190" height="28" rx="6" fill="#1e293b" stroke="#475569" stroke-width="1" />
+    <text x="35" y="103" fill="#cbd5e1" font-family="monospace" font-size="11">"Verify checkout form"</text>
+  </g>
+
+  <!-- Bottom Left: Direct Automation Script -->
+  <g transform="translate(60, 340)" filter="url(#shadow)">
+    <rect width="240" height="130" rx="12" fill="url(#blueCard)" stroke="#818cf8" stroke-width="1.5" />
+    <circle cx="45" cy="45" r="20" fill="#818cf8" fill-opacity="0.15" />
+    <path d="M38 38 L45 45 L38 52 M47 52 L54 52" fill="none" stroke="#818cf8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="80" y="45" fill="#f8fafc" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-weight="600" font-size="16">Adaptive Automation</text>
+    <text x="80" y="65" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-size="12">Direct Form Runner</text>
+    <rect x="25" y="85" width="190" height="28" rx="6" fill="#1e293b" stroke="#475569" stroke-width="1" />
+    <text x="35" y="103" fill="#cbd5e1" font-family="monospace" font-size="11">Profile: Name, Gender, State</text>
+  </g>
+
+  <!-- ==================== CENTER: SHARED RESILIENCE ENGINE ==================== -->
+  <g transform="translate(390, 60)" filter="url(#shadow)">
+    <!-- Main Engine Container -->
+    <rect width="320" height="440" rx="16" fill="url(#blueCard)" stroke="#38bdf8" stroke-width="2" filter="url(#glowCyan)" />
+    
+    <!-- Header -->
+    <rect x="0" y="0" width="320" height="55" rx="16" fill="#1e293b" />
+    <path d="M 0 40 L 0 55 L 320 55 L 320 40 Z" fill="#1e293b" />
+    <text x="160" y="34" fill="#38bdf8" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-weight="700" font-size="16" text-anchor="middle" letter-spacing="0.5">SHARED RESILIENCE ENGINE</text>
+
+    <!-- Sub-Block 1: Semantic Resolver -->
+    <g transform="translate(20, 75)">
+      <rect width="280" height="75" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.2" />
+      <circle cx="28" cy="38" r="14" fill="#38bdf8" fill-opacity="0.15" />
+      <path d="M24 38 L27 41 L33 34" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" />
+      <text x="54" y="32" fill="#f1f5f9" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-weight="600" font-size="13">Semantic &amp; W3C Roles</text>
+      <text x="54" y="50" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-size="11">Labels, ARIA, Computed Names</text>
+    </g>
+
+    <!-- Sub-Block 2: Boundary Traverser -->
+    <g transform="translate(20, 165)">
+      <rect width="280" height="75" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.2" />
+      <circle cx="28" cy="38" r="14" fill="#818cf8" fill-opacity="0.15" />
+      <path d="M22 34 L34 34 M22 38 L34 38 M22 42 L34 42" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" />
+      <text x="54" y="32" fill="#f1f5f9" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-weight="600" font-size="13">Boundary Traverser</text>
+      <text x="54" y="50" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-size="11">Nested Shadow DOM &amp; IFrames</text>
+    </g>
+
+    <!-- Sub-Block 3: Spatial Proximity Fallback -->
+    <g transform="translate(20, 255)">
+      <rect width="280" height="75" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.2" />
+      <circle cx="28" cy="38" r="14" fill="#f59e0b" fill-opacity="0.15" />
+      <rect x="23" y="33" width="10" height="10" fill="none" stroke="#f59e0b" stroke-width="2" />
+      <text x="54" y="32" fill="#f1f5f9" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-weight="600" font-size="13">Spatial Geometry Fallback</text>
+      <text x="54" y="50" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-size="11">Bounding-box Proximity</text>
+    </g>
+
+    <!-- Sub-Block 4: Synthetic Events Pipeline -->
+    <g transform="translate(20, 345)">
+      <rect width="280" height="75" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.2" />
+      <circle cx="28" cy="38" r="14" fill="#34d399" fill-opacity="0.15" />
+      <path d="M24 38 L32 38 M28 34 L32 38 L28 42" fill="none" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      <text x="54" y="32" fill="#f1f5f9" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-weight="600" font-size="13">Synthetic Event Pipeline</text>
+      <text x="54" y="50" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-size="11">Focus, Input, Change &amp; Click</text>
+    </g>
+  </g>
+
+  <!-- ==================== RIGHT: TARGET & VERDICT ==================== -->
+  <!-- Target Web Page -->
+  <g transform="translate(800, 100)" filter="url(#shadow)">
+    <rect width="240" height="150" rx="12" fill="url(#blueCard)" stroke="#475569" stroke-width="1.5" />
+    <rect x="0" y="0" width="240" height="26" rx="12" fill="#1e293b" />
+    <path d="M 0 16 L 0 26 L 240 26 L 240 16 Z" fill="#1e293b" />
+    <circle cx="16" cy="13" r="4" fill="#ef4444" />
+    <circle cx="28" cy="13" r="4" fill="#f59e0b" />
+    <circle cx="40" cy="13" r="4" fill="#10b981" />
+    
+    <!-- DOM Mock -->
+    <rect x="20" y="45" width="80" height="10" rx="3" fill="#334155" />
+    <rect x="20" y="65" width="130" height="14" rx="4" fill="#1e293b" stroke="#3b82f6" stroke-width="1" />
+    <rect x="20" y="90" width="60" height="10" rx="3" fill="#334155" />
+    <rect x="20" y="110" width="130" height="14" rx="4" fill="#1e293b" stroke="#64748b" stroke-width="1" />
+    <circle cx="175" cy="72" r="6" fill="#10b981" fill-opacity="0.3" stroke="#10b981" stroke-width="1.5" />
+    <circle cx="175" cy="117" r="6" fill="#64748b" fill-opacity="0.3" stroke="#64748b" stroke-width="1.5" />
+  </g>
+
+  <!-- Assertion & Verdict -->
+  <g transform="translate(800, 330)" filter="url(#shadow)">
+    <rect width="240" height="130" rx="12" fill="url(#blueCard)" stroke="#34d399" stroke-width="1.5" />
+    <circle cx="45" cy="45" r="20" fill="#34d399" fill-opacity="0.15" />
+    <path d="M37 45 L42 50 L53 39" fill="none" stroke="#34d399" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="80" y="45" fill="#f8fafc" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-weight="600" font-size="16">Verified Outcome</text>
+    <text x="80" y="65" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-size="12">State &amp; Rendered Text</text>
+    <rect x="25" y="85" width="190" height="28" rx="6" fill="#064e3b" stroke="#059669" stroke-width="1" />
+    <text x="75" y="104" fill="#34d399" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-weight="700" font-size="12">PASS / FAIL CONFIRMED</text>
+  </g>
+
+  <!-- ==================== CONNECTING ARROWS ==================== -->
+  <!-- Top Left -> Center -->
+  <path d="M 300 155 L 380 155" fill="none" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrow)" />
+  
+  <!-- Bottom Left -> Center -->
+  <path d="M 300 405 L 380 405" fill="none" stroke="#818cf8" stroke-width="2" marker-end="url(#arrow)" />
+
+  <!-- Center -> Top Right (Web page action) -->
+  <path d="M 710 200 L 790 180" fill="none" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrow)" />
+
+  <!-- Web Page -> Verified Verdict -->
+  <path d="M 920 250 L 920 320" fill="none" stroke="#34d399" stroke-width="2" marker-end="url(#arrowGreen)" />
+</svg>
