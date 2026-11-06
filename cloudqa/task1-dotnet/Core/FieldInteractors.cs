@@ -100,16 +100,24 @@ public class StateInteractor : IFieldInteractor
         if (res is Dictionary<string, object> dict && dict.TryGetValue("element", out var elObj) && elObj is IWebElement el)
         {
             var interactRes = js.ExecuteScript(ResilientEngineScripts.InteractDropdownScript, el, _state);
-            if (interactRes is Dictionary<string, object> resDict)
+            if (interactRes is not Dictionary<string, object> resDict)
             {
-                var success = resDict.TryGetValue("success", out var s) && s is bool b && b;
-                if (!success)
-                {
-                    var reason = resDict.TryGetValue("reason", out var r) ? r?.ToString() : "Unknown reason";
-                    throw new InvalidOperationException($"Failed to select State '{_state}': {reason}");
-                }
-                return true;
+                throw new InvalidOperationException(
+                    $"State selection returned an unexpected result type in {contextDescription}.");
             }
+
+            var success = resDict.TryGetValue("success", out var successValue)
+                && successValue is bool selected
+                && selected;
+
+            if (!success)
+            {
+                var reason = resDict.TryGetValue("reason", out var reasonValue)
+                    ? reasonValue?.ToString()
+                    : "No verification result was returned.";
+                throw new InvalidOperationException($"Failed to select State '{_state}': {reason}");
+            }
+
             return true;
         }
 
