@@ -1,0 +1,27 @@
+# .NET build outputs
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Python build & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+ENV/
+
+# Environment / Secret credentials
+.env
+*.local
+
+# Test / Debug Artifacts & Temporary files
+artifacts/
+*.log
+page.html
+.vscode/
+.idea/
