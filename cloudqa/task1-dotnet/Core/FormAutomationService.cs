@@ -22,11 +22,12 @@ public class FormAutomationService : IFormAutomationService
         Console.WriteLine("===============================================================================");
         Console.WriteLine($"Configuration Profile: {_profile}");
 
-        // Phase 1: Test Root Form & Open Shadow DOMs
+        // Phase 1: Test Root Document & Open Shadow Roots
+        _driver.SwitchTo().DefaultContent();
         ExecuteInCurrentContext("Root Document & Nested Shadow DOMs");
 
-        // Phase 2: Discover and Test all IFrames (with or without ID, including nested)
-        TestAllFrames();
+        // Phase 2: Recursively discover and test candidate IFrames that host form fields
+        TraverseAndTestFrames(currentPath: "Top Window", depth: 1, maxDepth: 4);
 
         // Print Summary Table
         PrintSummary();
@@ -34,20 +35,28 @@ public class FormAutomationService : IFormAutomationService
 
     private void ExecuteInCurrentContext(string contextName)
     {
+        var js = (IJavaScriptExecutor)_driver;
+        var hasControls = (bool)(js.ExecuteScript(ResilientEngineScripts.HasFormControlsScript) ?? false);
+        if (!hasControls)
+        {
+            // Context contains no form controls; skip gracefully without falsely marking it as a failed form
+            return;
+        }
+
         Console.WriteLine($"\n[Context] Testing: {contextName}");
         try
         {
             var firstNameInteractor = new FirstNameInteractor(_profile.FirstName);
             firstNameInteractor.Fill(_driver, contextName);
-            Console.WriteLine($"  ✓ First Name filled: '{_profile.FirstName}'");
+            Console.WriteLine($"  ✓ First Name verified: '{_profile.FirstName}'");
 
             var genderInteractor = new GenderInteractor(_profile.Gender);
             genderInteractor.Fill(_driver, contextName);
-            Console.WriteLine($"  ✓ Gender selected: '{_profile.Gender}'");
+            Console.WriteLine($"  ✓ Gender verified: '{_profile.Gender}'");
 
             var stateInteractor = new StateInteractor(_profile.State);
             stateInteractor.Fill(_driver, contextName);
-            Console.WriteLine($"  ✓ State selected: '{_profile.State}'");
+            Console.WriteLine($"  ✓ State verified: '{_profile.State}'");
 
             _results.Add(new ContextResult(contextName, true, _profile.FirstName, _profile.Gender.ToString(), _profile.State, null));
         }
@@ -58,50 +67,36 @@ public class FormAutomationService : IFormAutomationService
         }
     }
 
-    private void TestAllFrames()
+    private void TraverseAndTestFrames(string currentPath, int depth, int maxDepth)
     {
-        _driver.SwitchTo().DefaultContent();
-        var iframes = _driver.FindElements(By.TagName("iframe"));
-        Console.WriteLine($"\nDiscovered {iframes.Count} top-level <iframe> elements.");
+        if (depth > maxDepth) return;
 
-        for (int i = 0; i < iframes.Count; i++)
+        var frameCount = _driver.FindElements(By.TagName("iframe")).Count;
+        for (int i = 0; i < frameCount; i++)
         {
             try
             {
-                _driver.SwitchTo().DefaultContent();
-                var currentFrame = _driver.FindElements(By.TagName("iframe"))[i];
-                var frameId = currentFrame.GetDomAttribute("id") ?? "";
-                var frameSrc = currentFrame.GetDomAttribute("src") ?? "";
-                var frameDesc = $"IFrame #{i + 1} (id='{frameId}', src='{frameSrc}')";
+                var frames = _driver.FindElements(By.TagName("iframe"));
+                if (i >= frames.Count) break;
 
-                _driver.SwitchTo().Frame(currentFrame);
-                ExecuteInCurrentContext(frameDesc);
+                var frame = frames[i];
+                var frameId = frame.GetDomAttribute("id") ?? "";
+                var frameSrc = frame.GetDomAttribute("src") ?? "";
+                var frameName = !string.IsNullOrEmpty(frameId) ? $"id='{frameId}'" : (!string.IsNullOrEmpty(frameSrc) ? $"src='{frameSrc}'" : $"index={i}");
+                var subPath = $"{currentPath} -> Frame ({frameName})";
 
-                // Check for inner nested frames inside this iframe
-                var innerFrames = _driver.FindElements(By.TagName("iframe"));
-                for (int j = 0; j < innerFrames.Count; j++)
-                {
-                    try
-                    {
-                        var inner = _driver.FindElements(By.TagName("iframe"))[j];
-                        var innerDesc = $"{frameDesc} -> Nested Frame #{j + 1}";
-                        _driver.SwitchTo().Frame(inner);
-                        ExecuteInCurrentContext(innerDesc);
-                        _driver.SwitchTo().ParentFrame();
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"  Notice: inner frame interaction note: {ex.Message}");
-                    }
-                }
+                _driver.SwitchTo().Frame(frame);
+                ExecuteInCurrentContext(subPath);
+
+                // Recurse into nested frames
+                TraverseAndTestFrames(subPath, depth + 1, maxDepth);
+
+                _driver.SwitchTo().ParentFrame();
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"  Notice: skipping frame {i}: {ex.Message}");
-            }
-            finally
-            {
-                _driver.SwitchTo().DefaultContent();
+                Console.WriteLine($"  Notice on frame navigation ({currentPath} #{i}): {ex.Message}");
+                _driver.SwitchTo().ParentFrame();
             }
         }
     }
@@ -125,7 +120,7 @@ public class FormAutomationService : IFormAutomationService
         }
 
         Console.WriteLine("-------------------------------------------------------------------------------");
-        Console.WriteLine($"Total Contexts Evaluated: {total} | Passed: {passed} | Failed: {total - passed}");
+        Console.WriteLine($"Form Contexts Identified: {total} | Passed: {passed} | Failed: {total - passed}");
         Console.WriteLine("===============================================================================\n");
 
         if (passed == 0)
