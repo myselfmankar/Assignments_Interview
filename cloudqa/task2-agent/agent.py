@@ -246,7 +246,8 @@ Given:
 
 Rules:
 - Generate a sequence of actions that executes the test case.
-- MANDATORY: Every valid test plan MUST contain at least one verification step ("verify_text" or "verify_element") asserting the expected outcome.
+- MANDATORY: Every valid test plan MUST contain at least one verification step ("verify_text" or "verify_element").
+- MANDATORY: Include a non-empty "success_condition" that confirms the completed workflow, not merely that an initial page element exists.
 - DO NOT hard-code site-specific selectors.
 - Available actions:
   - "goto": navigate to an absolute URL. Params: {"action": "goto", "url": "https://..."}
@@ -486,6 +487,10 @@ def _current_page_text(driver: webdriver.Chrome) -> str:
         function collect(node, parts = []) {
             if (!node) return parts;
             if (node.nodeType === Node.ELEMENT_NODE) {
+                const style = getComputedStyle(node);
+                const rect = node.getBoundingClientRect();
+                if (style.display === 'none' || style.visibility === 'hidden' ||
+                    style.opacity === '0' || (!rect.width && !rect.height)) return parts;
                 if (node.shadowRoot) collect(node.shadowRoot, parts);
             }
             if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) parts.push(node.textContent);
