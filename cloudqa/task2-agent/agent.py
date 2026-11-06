@@ -111,7 +111,9 @@ for (const el of elements) {
     const tag = el.tagName;
     if (expectedType === 'input' && !['INPUT', 'TEXTAREA'].includes(tag)) continue;
     if (expectedType === 'button' && !['BUTTON', 'A'].includes(tag) && el.getAttribute('role') !== 'button') continue;
-    if (expectedType === 'select' && tag !== 'SELECT' && el.getAttribute('role') !== 'combobox') continue;
+    if (expectedType === 'select' && tag !== 'SELECT' &&
+        el.getAttribute('role') !== 'combobox' &&
+        el.getAttribute('aria-haspopup') !== 'listbox') continue;
 
     if (sem === target) score = 100;
     else if (sem.startsWith(target)) score = 80;
@@ -147,8 +149,6 @@ if (!el) return false;
 el.scrollIntoView({ behavior: 'instant', block: 'center' });
 el.focus();
 el.click();
-el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-el.dispatchEvent(new Event('change', { bubbles: true }));
 return true;
 """
 
@@ -515,16 +515,19 @@ def _find_text_in_frames(driver: webdriver.Chrome, expected: str, depth: int = 0
     if depth >= max_depth:
         return False
     for frame in driver.find_elements(By.TAG_NAME, "iframe"):
+        switched = False
         try:
             driver.switch_to.frame(frame)
+            switched = True
             if _find_text_in_frames(driver, expected, depth + 1, max_depth):
                 return True
             driver.switch_to.parent_frame()
         except Exception:
-            try:
-                driver.switch_to.parent_frame()
-            except Exception:
-                driver.switch_to.default_content()
+            if switched:
+                try:
+                    driver.switch_to.parent_frame()
+                except Exception:
+                    driver.switch_to.default_content()
     return False
 
 
