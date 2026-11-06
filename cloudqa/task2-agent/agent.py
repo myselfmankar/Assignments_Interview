@@ -24,7 +24,7 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support.ui import Select, WebDriverWait
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -70,8 +70,9 @@ const isVisible = (el) => {
 const elements = getAllDeep(document.body).filter(el => {
     const tag = el.tagName.toLowerCase();
     const role = (el.getAttribute('role') || '').toLowerCase();
-    return ['input', 'button', 'select', 'textarea', 'a', 'label'].includes(tag)
-        || ['button', 'link', 'combobox', 'tab', 'textbox'].includes(role);
+    return ['input', 'button', 'select', 'textarea', 'a'].includes(tag)
+        || ['button', 'link', 'combobox', 'tab', 'textbox'].includes(role)
+        || el.getAttribute('aria-haspopup') === 'listbox';
 }).filter(isVisible);
 
 function getSemantics(el) {
@@ -110,7 +111,9 @@ for (const el of elements) {
     const tag = el.tagName;
     if (expectedType === 'input' && !['INPUT', 'TEXTAREA'].includes(tag)) continue;
     if (expectedType === 'button' && !['BUTTON', 'A'].includes(tag) && el.getAttribute('role') !== 'button') continue;
-    if (expectedType === 'select' && tag !== 'SELECT' && el.getAttribute('role') !== 'combobox') continue;
+    if (expectedType === 'select' && tag !== 'SELECT' &&
+        el.getAttribute('role') !== 'combobox' &&
+        el.getAttribute('aria-haspopup') !== 'listbox') continue;
 
     if (sem === target) score = 100;
     else if (sem.startsWith(target)) score = 80;
@@ -146,8 +149,6 @@ if (!el) return false;
 el.scrollIntoView({ behavior: 'instant', block: 'center' });
 el.focus();
 el.click();
-el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-el.dispatchEvent(new Event('change', { bubbles: true }));
 return true;
 """
 
@@ -166,31 +167,70 @@ return true;
 
 SELECT_DROPDOWN_SCRIPT = """
 const target = arguments[0];
-const val = (arguments[1] || '').toLowerCase().trim();
-if (!target) return { success: false, reason: 'Target element is null' };
-
-if (target.tagName === 'SELECT') {
-    let matched = false;
-    for (let i = 0; i < target.options.length; i++) {
-        const opt = target.options[i];
-        const optText = (opt.text || '').toLowerCase().trim();
-        const optVal = (opt.value || '').toLowerCase().trim();
-        if (optText === val || optVal === val || optText.includes(val) || optVal.includes(val)) {
-            target.selectedIndex = i;
-            matched = true;
-            break;
-        }
-    }
-    if (!matched) return { success: false, reason: `Option '${val}' not found in dropdown.` };
-    target.dispatchEvent(new Event('input', { bubbles: true }));
-    target.dispatchEvent(new Event('change', { bubbles: true }));
-    return { success: true, reason: null };
-}
-
+if (!target) return false;
 target.scrollIntoView({ behavior: 'instant', block: 'center' });
 target.click();
-target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-return { success: true, reason: null };
+return true;
+"""
+
+FIND_VISIBLE_OPTION_SCRIPT = """
+const wanted = (arguments[0] || '').trim().toLowerCase();
+function collect(node, out = []) {
+    if (!node) return out;
+    if (node.nodeType === Node.ELEMENT_NODE) {
+        out.push(node);
+        if (node.shadowRoot) collect(node.shadowRoot, out);
+    }
+    for (const child of (node.children || [])) collect(child, out);
+    return out;
+}
+const visible = el => {
+    const r = el.getBoundingClientRect(), s = getComputedStyle(el);
+    return r.width > 0 && r.height > 0 && s.display !== 'none' &&
+           s.visibility !== 'hidden' && s.opacity !== '0';
+};
+const candidates = collect(document).filter(el => {
+    const role = (el.getAttribute('role') || '').toLowerCase();
+    return ['option', 'menuitem'].includes(role) || el.matches('[data-value], li');
+}).filter(visible).map(el => {
+    const text = (el.innerText || el.textContent || '').trim().toLowerCase();
+    const value = (el.getAttribute('data-value') || el.getAttribute('value') || '').trim().toLowerCase();
+    return {el, score: text === wanted || value === wanted ? 100 :
+                      (text.includes(wanted) || value.includes(wanted) ? 60 : 0)};
+}).filter(item => item.score > 0).sort((a, b) => b.score - a.score);
+if (!candidates.length) return null;
+if (candidates.length > 1 && candidates[0].score === candidates[1].score) return null;
+return candidates[0].el;
+"""
+
+VERIFY_CUSTOM_SELECTION_SCRIPT = """
+const target = arguments[0];
+const wanted = (arguments[1] || '').trim().toLowerCase();
+if (!target) return false;
+const direct = [
+    target.getAttribute('aria-valuetext'),
+    target.getAttribute('value'),
+    target.value,
+    target.innerText,
+    target.textContent
+].filter(Boolean).join(' ').toLowerCase();
+if (direct.includes(wanted)) return true;
+function collect(node, out = []) {
+    if (!node) return out;
+    if (node.nodeType === Node.ELEMENT_NODE) {
+        out.push(node);
+        if (node.shadowRoot) collect(node.shadowRoot, out);
+    }
+    for (const child of (node.children || [])) collect(child, out);
+    return out;
+}
+return collect(document).some(el => {
+    const role = (el.getAttribute('role') || '').toLowerCase();
+    const selected = el.getAttribute('aria-selected') === 'true' ||
+                     el.getAttribute('aria-checked') === 'true';
+    const text = (el.innerText || el.textContent || '').trim().toLowerCase();
+    return selected && ['option', 'menuitem'].includes(role) && text.includes(wanted);
+});
 """
 
 SYSTEM_PROMPT = """You are a rigorous, autonomous browser QA agent and test planner.
@@ -207,7 +247,8 @@ Given:
 
 Rules:
 - Generate a sequence of actions that executes the test case.
-- MANDATORY: Every valid test plan MUST contain at least one verification step ("verify_text" or "verify_element") asserting the expected outcome.
+- MANDATORY: Every valid test plan MUST contain at least one verification step ("verify_text" or "verify_element").
+- MANDATORY: Include a non-empty "success_condition" that confirms the completed workflow, not merely that an initial page element exists.
 - DO NOT hard-code site-specific selectors.
 - Available actions:
   - "goto": navigate to an absolute URL. Params: {"action": "goto", "url": "https://..."}
@@ -238,118 +279,117 @@ Return a strictly valid JSON object matching this schema:
 
 
 def capture_page_snapshot(driver: webdriver.Chrome) -> dict[str, Any]:
-    """Capture a clean, compact DOM snapshot of interactive elements across DOM, Shadow DOM, and IFrames."""
+    """Capture visible controls in the document, open Shadow DOMs, and nested iframes."""
     script = """
-    function getAllDeep(node) {
-        let res = [];
-        if (!node) return res;
+    function getAllDeep(node, out = []) {
+        if (!node) return out;
         if (node.nodeType === Node.ELEMENT_NODE) {
-            res.push(node);
-            if (node.shadowRoot) res.push(...getAllDeep(node.shadowRoot));
+            out.push(node);
+            if (node.shadowRoot) getAllDeep(node.shadowRoot, out);
         }
-        const children = node.children || [];
-        for (let i = 0; i < children.length; i++) res.push(...getAllDeep(children[i]));
-        return res;
+        for (const child of (node.children || [])) getAllDeep(child, out);
+        return out;
     }
-
-    const isVisible = (el) => {
-        if (!el) return false;
+    const isVisible = el => {
         const rect = el.getBoundingClientRect();
-        const style = window.getComputedStyle(el);
-        return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none' && style.opacity !== '0';
+        const style = getComputedStyle(el);
+        return rect.width > 0 && rect.height > 0 &&
+               style.visibility !== 'hidden' && style.display !== 'none' && style.opacity !== '0';
     };
-
-    const elements = getAllDeep(document.body).filter(el => {
-        const tag = el.tagName.toLowerCase();
-        const role = el.getAttribute('role') || '';
-        return ['input', 'button', 'select', 'textarea', 'a', 'h1', 'h2', 'h3'].includes(tag) 
-            || ['button', 'link', 'combobox', 'heading'].includes(role);
-    }).filter(isVisible).slice(0, 100);
-
-    return elements.map(el => {
+    return getAllDeep(document.body).filter(el => {
+        const tag = el.tagName.toLowerCase(), role = el.getAttribute('role') || '';
+        return ['input', 'button', 'select', 'textarea', 'a', 'h1', 'h2', 'h3'].includes(tag) ||
+               ['button', 'link', 'combobox', 'heading', 'radio', 'textbox'].includes(role);
+    }).filter(isVisible).slice(0, 100).map(el => {
         let label = '';
-        if (el.labels && el.labels.length > 0) {
-            label = Array.from(el.labels).map(l => l.innerText).join(' ');
-        }
-        const parentLabel = el.closest('label');
-        if (parentLabel) label += ' ' + parentLabel.innerText;
-
+        if (el.labels && el.labels.length) label = Array.from(el.labels).map(l => l.innerText).join(' ');
+        const parent = el.closest('label');
+        if (parent) label += ' ' + parent.innerText;
         return {
-            tag: el.tagName.toLowerCase(),
-            type: el.getAttribute('type') || '',
-            role: el.getAttribute('role') || '',
-            name: el.getAttribute('name') || '',
-            id: el.getAttribute('id') || '',
-            placeholder: el.getAttribute('placeholder') || '',
-            aria_label: el.getAttribute('aria-label') || '',
-            label: label.trim(),
-            text: (el.innerText || el.value || '').trim().slice(0, 100),
-            href: el.href || ''
+            tag: el.tagName.toLowerCase(), type: el.getAttribute('type') || '',
+            role: el.getAttribute('role') || '', name: el.getAttribute('name') || '',
+            id: el.getAttribute('id') || '', placeholder: el.getAttribute('placeholder') || '',
+            aria_label: el.getAttribute('aria-label') || '', label: label.trim(),
+            text: (el.innerText || el.value || '').trim().slice(0, 100), href: el.href || ''
         };
     });
     """
-    try:
-        controls = driver.execute_script(script) or []
-    except Exception:
-        controls = []
 
-    # Also capture controls inside top-level iframes
-    try:
-        driver.switch_to.default_content()
+    controls = []
+    def walk_frames(depth: int = 0, max_depth: int = 4) -> None:
+        if depth >= max_depth:
+            return
         frames = driver.find_elements(By.TAG_NAME, "iframe")
-        for i, frame in enumerate(frames[:3]):
+        for frame in frames:
+            switched = False
             try:
                 driver.switch_to.frame(frame)
+                switched = True
                 frame_controls = driver.execute_script(script) or []
-                for fc in frame_controls:
-                    fc["in_frame"] = True
+                for item in frame_controls:
+                    item["in_frame"] = True
+                    item["frame_depth"] = depth + 1
                 controls.extend(frame_controls[:30])
-                driver.switch_to.default_content()
+                walk_frames(depth + 1, max_depth)
+                driver.switch_to.parent_frame()
             except Exception:
-                driver.switch_to.default_content()
-    except Exception:
-        driver.switch_to.default_content()
+                if switched:
+                    try:
+                        driver.switch_to.parent_frame()
+                    except Exception:
+                        driver.switch_to.default_content()
+
+    driver.switch_to.default_content()
+    controls.extend(driver.execute_script(script) or [])
+    walk_frames()
+    driver.switch_to.default_content()
 
     headings = []
     try:
-        h_elements = driver.find_elements(By.CSS_SELECTOR, "h1, h2, h3, [role='heading']")
-        headings = [h.text.strip() for h in h_elements if h.is_displayed() and h.text.strip()][:15]
+        headings = [h.text.strip() for h in driver.find_elements(
+            By.CSS_SELECTOR, "h1, h2, h3, [role='heading']"
+        ) if h.is_displayed() and h.text.strip()][:15]
     except Exception:
         pass
 
-    return {
-        "url": driver.current_url,
-        "title": driver.title,
-        "headings": headings,
-        "controls": controls[:120],
-    }
+    return {"url": driver.current_url, "title": driver.title,
+            "headings": headings, "controls": controls[:120]}
 
 
 def validate_plan(plan: dict[str, Any]) -> None:
-    """Strictly validate AI generated action plans."""
-    if not isinstance(plan.get("steps"), list) or len(plan["steps"]) == 0:
+    """Reject malformed plans and require an explicit workflow success assertion."""
+    if not isinstance(plan, dict):
+        raise ValueError("Plan validation failed: response must be a JSON object.")
+    steps = plan.get("steps")
+    if not isinstance(steps, list) or not steps:
         raise ValueError("Plan validation failed: 'steps' must be a non-empty list.")
 
-    has_verification = False
-    for idx, step in enumerate(plan["steps"]):
+    has_assertion = False
+    for idx, step in enumerate(steps):
+        if not isinstance(step, dict):
+            raise ValueError(f"Plan validation failed: step {idx + 1} must be an object.")
         action = step.get("action")
         if action not in ALLOWED_ACTIONS:
-            raise ValueError(f"Plan validation failed: Invalid action '{action}' at step {idx + 1}")
+            raise ValueError(f"Plan validation failed: Invalid action '{action}' at step {idx + 1}.")
 
-        if action in {"click", "fill", "select", "press", "verify_element"} and not step.get("target"):
-            raise ValueError(f"Plan validation failed: Step {idx + 1} ('{action}') requires a 'target'")
+        if action in {"click", "fill", "select", "press", "verify_element",
+                      "verify_text", "wait_for_text"} and not str(step.get("target", "")).strip():
+            raise ValueError(f"Plan validation failed: Step {idx + 1} ('{action}') requires a non-empty 'target'.")
 
-        if action == "fill" and "value" not in step:
-            raise ValueError(f"Plan validation failed: Step {idx + 1} ('fill') requires a 'value'")
+        if action in {"fill", "select"} and "value" not in step:
+            raise ValueError(f"Plan validation failed: Step {idx + 1} ('{action}') requires a 'value'.")
+        if action == "goto":
+            url = step.get("url", "")
+            if not isinstance(url, str) or not url.startswith(("http://", "https://")):
+                raise ValueError(f"Plan validation failed: Step {idx + 1} ('goto') requires an absolute http/https URL.")
+        if action in {"verify_text", "verify_element"}:
+            has_assertion = True
 
-        if action == "goto" and not (step.get("url") and step["url"].startswith(("http://", "https://"))):
-            raise ValueError(f"Plan validation failed: Step {idx + 1} ('goto') requires a valid http/https 'url'")
-
-        if action in {"verify_text", "verify_element", "wait_for_text"}:
-            has_verification = True
-
-    if not has_verification:
-        raise ValueError("Plan validation failed: The plan contains actions but lacks any verification assertion.")
+    condition = plan.get("success_condition")
+    if not isinstance(condition, str) or not condition.strip():
+        raise ValueError("Plan validation failed: 'success_condition' must be a non-empty final success assertion.")
+    if not has_assertion:
+        raise ValueError("Plan validation failed: include at least one verify_text or verify_element assertion.")
 
 
 def make_plan(test_case: str, snapshot: dict[str, Any]) -> dict[str, Any]:
@@ -402,44 +442,134 @@ def make_plan(test_case: str, snapshot: dict[str, Any]) -> dict[str, Any]:
     raise last_exc or RuntimeError("Failed to generate plan with available models.")
 
 
+def _find_in_current_context(driver: webdriver.Chrome, target: str, expected_type: str,
+                             depth: int = 0, max_depth: int = 4):
+    """Search this document and nested frames up to max_depth; leave context at a match."""
+    element = driver.execute_script(SEMANTIC_LOCATOR_SCRIPT, target, expected_type)
+    if element:
+        return element
+
+    if depth >= max_depth:
+        return None
+    for frame in driver.find_elements(By.TAG_NAME, "iframe"):
+        switched = False
+        try:
+            driver.switch_to.frame(frame)
+            switched = True
+            element = _find_in_current_context(driver, target, expected_type, depth + 1, max_depth)
+            if element:
+                return element
+            if switched:
+                driver.switch_to.parent_frame()
+        except Exception:
+            # A stale or inaccessible frame should not prevent searching siblings.
+            if switched:
+                try:
+                    driver.switch_to.parent_frame()
+                except Exception:
+                    driver.switch_to.default_content()
+    return None
+
+
 def locate_element_resilient(driver: webdriver.Chrome, target: str, expected_type: str = "any", timeout: int = 10):
-    """Find an element using the semantic JavaScript engine across DOM, Shadow DOMs, and IFrames."""
+    """Find a semantic match through DOM, open Shadow DOM, and nested iframe contexts."""
     driver.implicitly_wait(0)
     end_time = time.time() + timeout
-
     while time.time() < end_time:
-        # 1. Search root and shadow DOM
         try:
             driver.switch_to.default_content()
-            el = driver.execute_script(SEMANTIC_LOCATOR_SCRIPT, target, expected_type)
-            if el:
-                return el
+            element = _find_in_current_context(driver, target, expected_type)
+            if element:
+                # Keep Selenium in the matching frame for the immediate action.
+                return element
         except Exception:
             pass
-
-        # 2. Search IFrames recursively
-        try:
-            frames = driver.find_elements(By.TAG_NAME, "iframe")
-            for frame in frames:
-                try:
-                    driver.switch_to.frame(frame)
-                    el = driver.execute_script(SEMANTIC_LOCATOR_SCRIPT, target, expected_type)
-                    if el:
-                        return el
-                except Exception:
-                    pass
-                finally:
-                    driver.switch_to.default_content()
-        except Exception:
-            driver.switch_to.default_content()
-
+        driver.switch_to.default_content()
         time.sleep(0.5)
+    raise NoSuchElementException(
+        f"Could not locate an unambiguous element matching '{target}' ({expected_type}) "
+        "across the DOM, open Shadow DOM, or nested iframes."
+    )
 
-    raise NoSuchElementException(f"Could not locate unambiguous element matching '{target}' ({expected_type}) across DOM, Shadow DOMs, or IFrames.")
+
+def _current_page_text(driver: webdriver.Chrome) -> str:
+    """Read rendered text from the current document and its open Shadow DOM roots."""
+    return driver.execute_script("""
+        function collect(node, parts = []) {
+            if (!node) return parts;
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                const style = getComputedStyle(node);
+                const rect = node.getBoundingClientRect();
+                if (style.display === 'none' || style.visibility === 'hidden' ||
+                    style.opacity === '0' || (!rect.width && !rect.height)) return parts;
+                if (node.shadowRoot) collect(node.shadowRoot, parts);
+            }
+            if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) parts.push(node.textContent);
+            for (const child of (node.childNodes || [])) collect(child, parts);
+            return parts;
+        }
+        return collect(document.body).join(' ');
+    """) or ""
+
+
+def _find_text_in_frames(driver: webdriver.Chrome, expected: str, depth: int = 0, max_depth: int = 4) -> bool:
+    if expected in _current_page_text(driver).lower():
+        return True
+    if depth >= max_depth:
+        return False
+    for frame in driver.find_elements(By.TAG_NAME, "iframe"):
+        switched = False
+        try:
+            driver.switch_to.frame(frame)
+            switched = True
+            if _find_text_in_frames(driver, expected, depth + 1, max_depth):
+                return True
+            driver.switch_to.parent_frame()
+        except Exception:
+            if switched:
+                try:
+                    driver.switch_to.parent_frame()
+                except Exception:
+                    driver.switch_to.default_content()
+    return False
+
+
+def _select_option(driver: webdriver.Chrome, element, value: str) -> None:
+    """Select a native or custom dropdown and verify the resulting selection."""
+    wanted = value.strip()
+    if not wanted:
+        raise ValueError("Dropdown selection requires a non-empty value.")
+
+    if element.tag_name.lower() == "select":
+        select = Select(element)
+        options = [option for option in select.options
+                   if option.text.strip().lower() == wanted.lower()
+                   or (option.get_attribute("value") or "").strip().lower() == wanted.lower()]
+        if not options:
+            options = [option for option in select.options
+                       if wanted.lower() in option.text.strip().lower()]
+        if len(options) != 1:
+            raise AssertionError(f"Expected one native dropdown option matching '{wanted}', found {len(options)}.")
+        select.select_by_visible_text(options[0].text)
+        selected = select.first_selected_option
+        if wanted.lower() not in selected.text.lower() and wanted.lower() != (selected.get_attribute("value") or "").lower():
+            raise AssertionError(f"Native dropdown did not select '{wanted}'.")
+        return
+
+    driver.execute_script(SELECT_DROPDOWN_SCRIPT, element)
+    option = WebDriverWait(driver, 8).until(
+        lambda d: d.execute_script(FIND_VISIBLE_OPTION_SCRIPT, wanted)
+    )
+    if option is None:
+        raise AssertionError(f"No unique visible custom-dropdown option matched '{wanted}'.")
+    option.click()
+    WebDriverWait(driver, 5).until(
+        lambda d: d.execute_script(VERIFY_CUSTOM_SELECTION_SCRIPT, element, wanted)
+    )
 
 
 def execute_step(driver: webdriver.Chrome, step: dict[str, Any]):
-    """Execute a single test step using strict verification and resilient interactions."""
+    """Execute one action; interaction success is not treated as assertion success."""
     action = step.get("action")
     target = step.get("target") or ""
     value = step.get("value")
@@ -449,75 +579,53 @@ def execute_step(driver: webdriver.Chrome, step: dict[str, Any]):
 
     if action == "goto":
         driver.get(url)
-        time.sleep(2)
+        WebDriverWait(driver, 20).until(lambda d: d.execute_script("return document.readyState") == "complete")
         return
 
     if action == "scroll":
         delta = 500 if (value or "").lower() != "up" else -500
-        driver.execute_script(f"window.scrollBy(0, {delta});")
-        time.sleep(1)
+        driver.execute_script("window.scrollBy(0, arguments[0]);", delta)
         return
 
-    if action == "wait_for_text":
-        WebDriverWait(driver, 15).until(
-            lambda d: target.lower() in d.find_element(By.TAG_NAME, "body").text.lower()
-        )
-        return
-
-    if action == "verify_text":
-        body_text = driver.find_element(By.TAG_NAME, "body").text.lower()
-        if target.lower() in body_text:
-            return
-
+    if action in {"wait_for_text", "verify_text"}:
+        expected = target.lower()
+        if action == "wait_for_text":
+            WebDriverWait(driver, 15).until(lambda d: _find_text_in_frames(d, expected))
+        elif not _find_text_in_frames(driver, expected):
+            raise AssertionError(f"Text assertion failed: '{target}' was not found in rendered document text.")
         driver.switch_to.default_content()
-        frames = driver.find_elements(By.TAG_NAME, "iframe")
-        for f in frames:
-            try:
-                driver.switch_to.frame(f)
-                if target.lower() in driver.find_element(By.TAG_NAME, "body").text.lower():
-                    driver.switch_to.default_content()
-                    return
-            except Exception:
-                pass
-            finally:
-                driver.switch_to.default_content()
-
-        raise AssertionError(f"Text assertion failed: Expected rendered text '{target}' was not found on the page.")
+        return
 
     if action == "verify_element":
         locate_element_resilient(driver, target, expected_type="any", timeout=10)
+        driver.switch_to.default_content()
         return
 
-    # Element interaction
-    expected_type = "button" if action == "click" else ("input" if action in {"fill", "press"} else "any")
-    el = locate_element_resilient(driver, target, expected_type=expected_type, timeout=10)
+    expected_type = "button" if action == "click" else ("input" if action in {"fill", "press"} else ("select" if action == "select" else "any"))
+    element = locate_element_resilient(driver, target, expected_type=expected_type, timeout=10)
 
     if action == "click":
         try:
-            el.click()
+            element.click()
         except Exception:
-            driver.execute_script(SAFE_CLICK_SCRIPT, el)
-        time.sleep(1.5)
-
+            driver.execute_script(SAFE_CLICK_SCRIPT, element)
     elif action == "fill":
         try:
-            el.clear()
-            el.send_keys(value or "")
+            element.clear()
+            element.send_keys(value or "")
         except Exception:
-            driver.execute_script(SAFE_SET_VALUE_SCRIPT, el, value or "")
-        time.sleep(0.5)
-
+            driver.execute_script(SAFE_SET_VALUE_SCRIPT, element, value or "")
+        actual = (element.get_attribute("value") or "").strip()
+        if actual != str(value or "").strip():
+            raise AssertionError(f"Fill verification failed for '{target}'.")
     elif action == "select":
-        res = driver.execute_script(SELECT_DROPDOWN_SCRIPT, el, value or "")
-        if isinstance(res, dict) and not res.get("success"):
-            raise InvalidOperationException(f"Dropdown selection failed: {res.get('reason')}")
-        time.sleep(0.5)
-
+        _select_option(driver, element, str(value or ""))
     elif action == "press":
-        key_name = (value or "enter").upper()
-        key_to_press = getattr(Keys, key_name, Keys.ENTER)
-        el.send_keys(key_to_press)
-        time.sleep(1.5)
+        key_name = str(value or "ENTER").upper()
+        key_to_press = getattr(Keys, key_name, None)
+        if key_to_press is None:
+            raise ValueError(f"Unsupported keyboard key: {key_name}")
+        element.send_keys(key_to_press)
 
 
 def run_test(test_case: str, start_url: str, headed: bool = False) -> bool:
@@ -561,14 +669,13 @@ def run_test(test_case: str, start_url: str, headed: bool = False) -> bool:
             print(f"Executing step {idx}/{len(plan['steps'])}:")
             execute_step(driver, step)
 
-        # Final Verification: If success_condition is specified, it MUST be confirmed on the page
-        cond = plan.get("success_condition")
-        if cond and cond.strip():
-            print(f"\n[Final Assertion] Verifying success condition: '{cond}' ...")
-            body_text = driver.find_element(By.TAG_NAME, "body").text.lower()
-            if cond.lower() not in body_text:
-                raise AssertionError(f"Final success condition '{cond}' was not found on the page.")
-            print(f"  ✓ Confirmed visible condition: '{cond}'")
+        # Final workflow assertion is mandatory and independently checked.
+        cond = plan["success_condition"].strip().lower()
+        print(f"\n[Final Assertion] Verifying success condition: '{cond}' ...")
+        if not _find_text_in_frames(driver, cond):
+            raise AssertionError(f"Final success condition '{cond}' was not found in rendered page text.")
+        driver.switch_to.default_content()
+        print(f"  ✓ Confirmed visible condition: '{cond}'")
 
         print("\n" + "=" * 70)
         print(f"TEST RESULT: PASS ✅")
@@ -586,7 +693,8 @@ def run_test(test_case: str, start_url: str, headed: bool = False) -> bool:
 
         artifacts_dir = Path("artifacts")
         artifacts_dir.mkdir(exist_ok=True)
-        screenshot_path = artifacts_dir / "failure.png"
+        run_id = f"{time.strftime('%Y%m%d-%H%M%S')}-{time.time_ns()}"
+        screenshot_path = artifacts_dir / f"failure-{run_id}.png"
         try:
             driver.save_screenshot(str(screenshot_path))
             print(f"Saved failure screenshot to: {screenshot_path.resolve()}")

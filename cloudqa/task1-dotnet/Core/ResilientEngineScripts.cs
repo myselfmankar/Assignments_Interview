@@ -105,6 +105,7 @@ public static class ResilientEngineScripts
             const exact1 = scored[1].input.placeholder?.toLowerCase() === targetLabel || scored[1].input.name?.toLowerCase() === targetLabel;
             if (exact0 && !exact1) return scored[0].input;
             if (!exact0 && exact1) return scored[1].input;
+            return null; // unresolved tie: do not type into an arbitrary field
         }
 
         if (scored.length > 0 && scored[0].score >= 40) {
@@ -202,26 +203,12 @@ public static class ResilientEngineScripts
             }
         }
 
-        // Prefer radio confirmed in the gender group
+        // Only accept a unique match in the labelled group. If the group cannot
+        // be established, accept a globally unique option; otherwise fail closed.
         const groupMatches = matches.filter(m => m.inGroup);
-        if (groupMatches.length > 0) return groupMatches[0].radio;
+        if (groupMatches.length === 1) return groupMatches[0].radio;
+        if (groupMatches.length > 1) return null;
         if (matches.length === 1) return matches[0].radio;
-
-        // 2. Clickable label/span containing choice text inside gender group
-        const groupContainers = getAllDeep(root, el => {
-            return (el.tagName === 'DIV' || el.tagName === 'FIELDSET') 
-                && el.innerText && el.innerText.toLowerCase().includes(groupLabel);
-        });
-
-        for (const container of groupContainers) {
-            const spans = getAllDeep(container, el => {
-                const text = (el.innerText || '').toLowerCase().trim();
-                return ['LABEL', 'SPAN', 'INPUT'].includes(el.tagName) && text === choiceValue;
-            });
-            if (spans.length > 0) return spans[0];
-        }
-
-        // Never fallback to arbitrary radios[0]
         return null;
     ";
 
@@ -271,7 +258,8 @@ public static class ResilientEngineScripts
             }
         }
 
-        if (scored.length > 0) return scored[0];
+        if (scored.length === 1) return scored[0];
+        if (scored.length > 1) return null; // multiple labelled State controls are ambiguous
         if (selects.length === 1) return { element: selects[0], type: 'native-select', score: 50 };
 
         // Tier 2: Look for custom combobox
@@ -300,24 +288,22 @@ public static class ResilientEngineScripts
 
         // Native select handling
         if (target.tagName === 'SELECT') {
-            let matched = false;
-            let matchedIndex = -1;
-            const search = valToSelect.toLowerCase().trim();
-            for (let i = 0; i < target.options.length; i++) {
-                const opt = target.options[i];
-                const optText = (opt.text || '').toLowerCase().trim();
-                const optVal = (opt.value || '').toLowerCase().trim();
-                if (optText === search || optVal === search || optText.includes(search) || optVal.includes(search)) {
-                    target.selectedIndex = i;
-                    matched = true;
-                    matchedIndex = i;
-                    break;
-                }
+            const search = (valToSelect || '').toLowerCase().trim();
+            if (!search) return { success: false, reason: 'Requested State is empty.' };
+            const exact = Array.from(target.options).filter(opt =>
+                (opt.text || '').toLowerCase().trim() === search ||
+                (opt.value || '').toLowerCase().trim() === search
+            );
+            const partial = exact.length ? exact : Array.from(target.options).filter(opt =>
+                (opt.text || '').toLowerCase().trim().includes(search) ||
+                (opt.value || '').toLowerCase().trim().includes(search)
+            );
+            if (partial.length !== 1) {
+                return { success: false, reason: partial.length
+                    ? `Requested option '${valToSelect}' is ambiguous.`
+                    : `Requested option '${valToSelect}' not found in dropdown.` };
             }
-
-            if (!matched) {
-                return { success: false, reason: `Requested option '${valToSelect}' not found in dropdown.` };
-            }
+            target.selectedIndex = Array.from(target.options).indexOf(partial[0]);
 
             target.dispatchEvent(new Event('focus', { bubbles: true }));
             target.dispatchEvent(new Event('input', { bubbles: true }));
@@ -332,11 +318,57 @@ public static class ResilientEngineScripts
             return { success: verified, selectedValue: selectedText, reason: verified ? null : 'Selection verification mismatch' };
         }
 
-        // Custom dropdown click trigger
+        // Custom dropdown: open it, locate a visible option, select it, and
+        // verify that the control reflects the requested value. A successful
+        // click on the trigger alone is never considered a successful select.
+        const search = (valToSelect || '').toLowerCase().trim();
+        if (!search) return { success: false, reason: 'Requested option is empty.' };
         target.scrollIntoView({ behavior: 'instant', block: 'center' });
         target.click();
-        target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-        return { success: true, selectedValue: valToSelect, reason: null };
+
+        function collectDeep(node, out = []) {
+            if (!node) return out;
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                out.push(node);
+                if (node.shadowRoot) collectDeep(node.shadowRoot, out);
+            }
+            for (const child of (node.children || [])) collectDeep(child, out);
+            return out;
+        }
+        const isVisible = el => {
+            const r = el.getBoundingClientRect();
+            const s = getComputedStyle(el);
+            return r.width > 0 && r.height > 0 && s.display !== 'none' &&
+                   s.visibility !== 'hidden' && s.opacity !== '0';
+        };
+        const candidates = collectDeep(document).filter(el => {
+            const role = (el.getAttribute('role') || '').toLowerCase();
+            return ['option', 'menuitem', 'listitem'].includes(role) ||
+                   el.tagName === 'OPTION' ||
+                   el.matches('[data-value], li');
+        }).filter(isVisible);
+        const scored = candidates.map(el => {
+            const text = (el.innerText || el.textContent || '').trim().toLowerCase();
+            const value = (el.getAttribute('data-value') || el.getAttribute('value') || '').trim().toLowerCase();
+            return { el, score: text === search || value === search ? 100 :
+                                (text.includes(search) || value.includes(search) ? 60 : 0) };
+        }).filter(x => x.score > 0).sort((a, b) => b.score - a.score);
+        if (!scored.length || (scored.length > 1 && scored[0].score === scored[1].score)) {
+            return { success: false, reason: 'Could not identify one unambiguous visible option: ' + valToSelect };
+        }
+        scored[0].el.click();
+
+        const selectedText = (target.getAttribute('aria-valuetext') ||
+                              target.getAttribute('value') ||
+                              target.value ||
+                              target.innerText ||
+                              target.textContent || '').trim().toLowerCase();
+        const selectedOption = target.getAttribute('aria-expanded') === 'false' &&
+            (scored[0].el.getAttribute('aria-selected') === 'true' ||
+             scored[0].el.getAttribute('aria-checked') === 'true');
+        const verified = selectedText.includes(search) || selectedOption;
+        return { success: verified, selectedValue: selectedText,
+                 reason: verified ? null : 'Custom dropdown did not expose the requested selected value.' };
     ";
 
     public const string VerifyInputValueScript = @"
@@ -344,22 +376,24 @@ public static class ResilientEngineScripts
         const expected = (arguments[1] || '').toLowerCase().trim();
         if (!el) return false;
         const actual = (el.value || '').toLowerCase().trim();
-        return actual.includes(expected) || expected.includes(actual);
+        return expected.length > 0 && actual === expected;
     ";
 
     public const string VerifyRadioSelectedScript = @"
         const el = arguments[0];
         if (!el) return false;
-        if (el.tagName === 'INPUT' && el.type === 'radio') {
-            return el.checked === true;
+        if (el.matches && el.matches('input[type=""radio""]')) return el.checked === true;
+        if ((el.getAttribute('role') || '').toLowerCase() === 'radio') {
+            return el.getAttribute('aria-checked') === 'true';
         }
-        // Check associated input if a label/span was clicked
-        const id = el.getAttribute('for') || el.id;
+        const id = el.getAttribute('for');
         if (id) {
-            const input = document.getElementById(id);
-            if (input && input.type === 'radio') return input.checked === true;
+            const root = el.getRootNode ? el.getRootNode() : document;
+            const input = root.getElementById ? root.getElementById(id) :
+                (root.querySelector ? root.querySelector('#' + CSS.escape(id)) : null);
+            if (input && input.matches('input[type=""radio""]')) return input.checked === true;
         }
-        return true;
+        return false;
     ";
 
     public const string SafeClickScript = @"
@@ -368,8 +402,6 @@ public static class ResilientEngineScripts
         el.scrollIntoView({ behavior: 'instant', block: 'center' });
         el.focus();
         el.click();
-        el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-        el.dispatchEvent(new Event('change', { bubbles: true }));
         return true;
     ";
 
