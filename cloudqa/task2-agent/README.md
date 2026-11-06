@@ -1,71 +1,67 @@
 # Task 2: Plain-English Automated Browser Test Agent
 
-## Problem Statement
-Build an autonomous browser agent that accepts plain-English test descriptions (e.g. *"Log in as customer and verify dashboard"*, *"Verify that the demo request form is displayed with First Name, Last Name, Business Name and Email fields"*), executes them automatically in a browser, and reports a verifiable **Pass / Fail** result. The tool avoids site-specific selectors, but successful automation depends on the target site's accessible structure and the quality of the generated plan.
+Give the agent a test instruction in plain English. It inspects the page, asks Gemini to produce a structured action plan, executes that plan in Chrome, and checks whether the expected result appeared.
 
----
+## Architecture
 
-## Tech Stack & Architecture
-- **Language**: Python 3.10+
-- **Automation Engine**: Selenium WebDriver (Chrome)
-- **AI Planning Engine**: Google Gemini via official `google-genai` SDK (`gemini-2.5-flash` with multi-model fallback and auto-retries)
-- **Execution Resilience Engine**: Semantic matching using accessible labels, ARIA attributes, roles, placeholders and visible text; open Shadow DOM traversal; recursive iframe search (bounded to four levels); native and accessible custom-dropdown handling.
+![Task 2 agent pipeline](../assets/task2-flow.svg)
 
----
+### Execution flow
 
-## How It Works
+1. **Input:** receive a target URL and plain-English test case.
+2. **Snapshot:** inspect visible controls and page context, including accessible open Shadow DOM and nested frames.
+3. **Planning:** Gemini returns a JSON list of browser actions.
+4. **Validation:** reject malformed plans, unsupported actions, missing targets/values, and plans without assertions.
+5. **Execution:** Python runs the allow-listed actions using Selenium and its own semantic JavaScript locator.
+6. **Verification:** check step assertions and the final success condition. Report PASS / FAIL; save a timestamped screenshot on failure.
 
-```mermaid
-flowchart TD
-    Prompt["Plain-English test case"] --> Snapshot["Capture visible DOM snapshot"]
-    Snapshot --> Planner["Gemini creates JSON action plan"]
-    Planner --> Validate["Validate actions and required assertions"]
-    Validate --> Locate["Semantic locator: DOM + open Shadow DOM + nested frames"]
-    Locate --> Execute["Selenium executes browser actions"]
-    Execute --> Assert["Verify step assertions and final success condition"]
-    Assert --> Result["PASS / FAIL with failure screenshot"]
-```
+> Task 2 does not use Task 1's C# implementation. Its locator and executor are implemented independently in `agent.py`.
 
----
+## Tech stack
 
-## Setup & Running
+- **Python 3.10+**
+- **Selenium WebDriver** with Chrome
+- **Google Gemini** through the official `google-genai` SDK
+- **python-dotenv** for local environment configuration
 
-### 1. Install Dependencies
+## Run
+
+### 1. Install dependencies
+
 ```bash
 cd cloudqa/task2-agent
 pip install -r requirements.txt
 ```
 
-### 2. Configure Environment
-Set `GEMINI_API_KEY` in `cloudqa/task2-agent/.env` or export it:
-```bash
-# Windows PowerShell:
-$env:GEMINI_API_KEY="your-api-key"
+### 2. Set the Gemini API key
+
+Windows PowerShell:
+
+```powershell
+$env:GEMINI_API_KEY = "your-api-key"
 ```
 
-### 3. Run Tests
-**Run on PHPTRAVELS Demo:**
+Or put it in a local `.env` file in this directory.
+
+### 3. Start a test
+
 ```bash
 python agent.py --url https://phptravels.com/demo --test "Verify that the demo request form is displayed with First Name, Last Name, Business Name and Email fields"
 ```
 
-**Run against another site (compatibility depends on its accessible DOM):**
-```bash
-python agent.py --url https://example.com --test "Verify that More information link is present on the page"
-```
-Add `--headed` to run in a visible browser window.
+Add `--headed` to show the browser window.
 
-## Test strategy and limitations
+## Tests
 
-Run deterministic planner-contract unit tests (no browser, network, or Gemini key required):
+The deterministic planner-contract tests do not launch Chrome or call Gemini:
 
 ```bash
-cd cloudqa/task2-agent
-pip install -r requirements.txt
 pip install pytest
 pytest -q
 ```
 
-The tests above validate the action-plan schema and mandatory final assertion. They are not browser integration tests. To run an end-to-end test, install Chrome, configure `GEMINI_API_KEY`, and execute one of the commands above. That integration run requires internet access and available Gemini API quota.
+For an end-to-end run, Chrome, a valid Gemini API key, internet access and available API quota are required.
 
-The agent supports the standard DOM, accessible open Shadow DOMs, and nested iframes up to four levels. Closed shadow roots, inaccessible cross-origin content, canvas-only controls, and custom widgets without discoverable accessible options cannot be reliably automated. A custom dropdown is considered successful only when the selected value or selected accessible option can be verified. The LLM-generated plan is treated as untrusted input and restricted to the allow-listed browser actions; do not use this agent on sites where test actions could cause irreversible changes.
+## Scope and limitations
+
+The agent supports the standard DOM, accessible open Shadow DOM and nested iframes up to four levels. Closed shadow roots, inaccessible cross-origin content, canvas-only controls and custom widgets without discoverable accessible options cannot be reliably automated. The generated plan is restricted to allow-listed browser actions; avoid running tests that could trigger irreversible actions on real accounts or production systems.
