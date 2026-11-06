@@ -679,7 +679,7 @@ def run_test(test_case: str, start_url: str, headed: bool = False) -> bool:
 
         artifacts_dir = Path("artifacts")
         artifacts_dir.mkdir(exist_ok=True)
-        run_id = time.strftime("%Y%m%d-%H%M%S")
+        run_id = f"{time.strftime('%Y%m%d-%H%M%S')}-{time.time_ns()}"
         screenshot_path = artifacts_dir / f"failure-{run_id}.png"
         try:
             driver.save_screenshot(str(screenshot_path))
