@@ -1,52 +1,57 @@
-# CloudQA Practical Assessment: Resilient Web Automation & AI Test Agent
+# CloudQA Practical Assessment
 
-This repository contains assessment implementations for both tasks of the CloudQA evaluation.
+Two implementations for the CloudQA assessment. Both automate browsers with Selenium, but they are **independent projects**.
 
----
+![CloudQA architecture overview](assets/cloudqa-overview.svg)
 
-## 📂 Repository Structure
+## How the two tasks relate
 
-- [`task1-dotnet/`](task1-dotnet/): **Adaptive Form Automation (C# & Selenium 4)**
-  - Semantic, verification-driven automation for dynamic web forms.
-  - Handles attribute and layout changes across the standard DOM, accessible open Shadow DOMs, and nested IFrames (bounded to four frame levels).
-- [`task2-agent/`](task2-agent/): **Plain-English Automated Browser Test Agent (Python, Selenium & Gemini)**
-  - Translates unstructured plain-English test instructions into autonomous browser execution plans.
-  - Uses an LLM-generated, allow-listed action plan and semantic element matching; compatibility depends on each site's accessible DOM.
-  - Uses semantic element matching, open Shadow DOM traversal, and recursive iframe discovery (bounded to four levels).
+| | Task 1 | Task 2 |
+|---|---|---|
+| Purpose | Fill and verify three known form fields | Turn a plain-English test into a browser workflow |
+| Stack | C#, .NET 10, Selenium | Python, Gemini, Selenium |
+| Planning | Fixed profile from environment variables | Gemini generates a JSON action plan |
+| Execution | C# field interactors + JavaScript helpers | Python action executor + Python-defined JavaScript locator |
+| Output | Per-context field verification summary | Workflow PASS / FAIL and failure screenshot |
 
----
+**Important:** Task 2 does not import, call, or reuse Task 1's C# classes. The implementations share an approach—semantic element discovery and verification—not code. They can be run and understood separately.
 
-## 🛠️ Quick Start
+## Repository layout
 
-### Task 1: Resilient Form Automation (C# .NET)
+- [task1-dotnet/](task1-dotnet/) — adaptive form automation for First Name, Gender and State.
+- [task2-agent/](task2-agent/) — natural-language browser testing agent powered by Gemini.
+- [assets/](assets/) — architecture diagrams used in these docs.
+
+## Quick start
+
+### Task 1 — C# / Selenium
+
+Requires .NET SDK 10 and Google Chrome.
+
 ```powershell
-# Run against CloudQA Practice Form
-dotnet run --project cloudqa/task1-dotnet/AdaptiveFormAutomation.csproj
+$env:TARGET_URL = "https://app.cloudqa.io/home/AutomationPracticeForm"
+$env:FIRST_NAME = "Vaishnav"
+$env:GENDER = "Male"
+$env:STATE = "Maharashtra"
+dotnet run --project .\cloudqa\task1-dotnet\AdaptiveFormAutomation.csproj
 ```
-*Configurable via environment variables: `TARGET_URL`, `FIRST_NAME`, `GENDER`, `STATE`, `HEADLESS`.*
 
-### Task 2: Plain-English Browser Agent (Python)
+### Task 2 — Python / Gemini / Selenium
+
+Requires Python 3.10+, Google Chrome, and a Gemini API key.
+
 ```powershell
-# 1. Install dependencies
 cd cloudqa/task2-agent
 pip install -r requirements.txt
-
-# 2. Set your Gemini API key
-$env:GEMINI_API_KEY="your-api-key"
-
-# 3. Run test on PHPTRAVELS demo site
-python agent.py --url https://phptravels.com/demo --test "Verify that the demo request form is displayed with First Name, Last Name, Business Name and Email fields"
+$env:GEMINI_API_KEY = "your-api-key"
+python agent.py --url https://phptravels.com/demo --test "Verify that the demo request form is displayed"
 ```
 
----
+Add `--headed` to show the browser window.
 
-## 📖 Detailed Documentation
-- For Task 1 architectural details, see [task1-dotnet/README.md](task1-dotnet/README.md).
-- For Task 2 agent architecture and options, see [task2-agent/README.md](task2-agent/README.md).
+## Detailed guides
 
-## Prerequisites
+- [Task 1 architecture, setup and limitations](task1-dotnet/README.md)
+- [Task 2 architecture, setup and limitations](task2-agent/README.md)
 
-- Task 1: .NET SDK 10.0 and Google Chrome.
-- Task 2: Python 3.10+, Google Chrome, and a Gemini API key for end-to-end execution.
-
-See each task README for exact setup commands, supported page structures, test strategy, and limitations. The implementations are assessment prototypes, not universal or production-certified automation frameworks.
+These are assessment prototypes; compatibility depends on the target page's accessible DOM and widget behavior.
