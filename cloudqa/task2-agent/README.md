@@ -37,7 +37,7 @@ pip install -r requirements.txt
 ```
 
 ### 2. Configure Environment
-Set `GEMINI_API_KEY` in `task2-agent/.env` or export it:
+Set `GEMINI_API_KEY` in `cloudqa/task2-agent/.env` or export it:
 ```bash
 # Windows PowerShell:
 $env:GEMINI_API_KEY="your-api-key"
