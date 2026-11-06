@@ -105,6 +105,7 @@ public static class ResilientEngineScripts
             const exact1 = scored[1].input.placeholder?.toLowerCase() === targetLabel || scored[1].input.name?.toLowerCase() === targetLabel;
             if (exact0 && !exact1) return scored[0].input;
             if (!exact0 && exact1) return scored[1].input;
+            return null; // unresolved tie: do not type into an arbitrary field
         }
 
         if (scored.length > 0 && scored[0].score >= 40) {
@@ -257,7 +258,8 @@ public static class ResilientEngineScripts
             }
         }
 
-        if (scored.length > 0) return scored[0];
+        if (scored.length === 1) return scored[0];
+        if (scored.length > 1) return null; // multiple labelled State controls are ambiguous
         if (selects.length === 1) return { element: selects[0], type: 'native-select', score: 50 };
 
         // Tier 2: Look for custom combobox
@@ -286,24 +288,22 @@ public static class ResilientEngineScripts
 
         // Native select handling
         if (target.tagName === 'SELECT') {
-            let matched = false;
-            let matchedIndex = -1;
-            const search = valToSelect.toLowerCase().trim();
-            for (let i = 0; i < target.options.length; i++) {
-                const opt = target.options[i];
-                const optText = (opt.text || '').toLowerCase().trim();
-                const optVal = (opt.value || '').toLowerCase().trim();
-                if (optText === search || optVal === search || optText.includes(search) || optVal.includes(search)) {
-                    target.selectedIndex = i;
-                    matched = true;
-                    matchedIndex = i;
-                    break;
-                }
+            const search = (valToSelect || '').toLowerCase().trim();
+            if (!search) return { success: false, reason: 'Requested State is empty.' };
+            const exact = Array.from(target.options).filter(opt =>
+                (opt.text || '').toLowerCase().trim() === search ||
+                (opt.value || '').toLowerCase().trim() === search
+            );
+            const partial = exact.length ? exact : Array.from(target.options).filter(opt =>
+                (opt.text || '').toLowerCase().trim().includes(search) ||
+                (opt.value || '').toLowerCase().trim().includes(search)
+            );
+            if (partial.length !== 1) {
+                return { success: false, reason: partial.length
+                    ? `Requested option '${valToSelect}' is ambiguous.`
+                    : `Requested option '${valToSelect}' not found in dropdown.` };
             }
-
-            if (!matched) {
-                return { success: false, reason: `Requested option '${valToSelect}' not found in dropdown.` };
-            }
+            target.selectedIndex = Array.from(target.options).indexOf(partial[0]);
 
             target.dispatchEvent(new Event('focus', { bubbles: true }));
             target.dispatchEvent(new Event('input', { bubbles: true }));
