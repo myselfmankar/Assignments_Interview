@@ -19,7 +19,7 @@ public class FirstNameInteractor : IFieldInteractor
 
         if (element == null)
         {
-            throw new NoSuchElementException($"[Tier 1/2/3] Could not locate 'First Name' input field in {contextDescription}");
+            throw new NoSuchElementException($"Could not locate 'First Name' input field in {contextDescription}");
         }
 
         try
@@ -29,8 +29,14 @@ public class FirstNameInteractor : IFieldInteractor
         }
         catch
         {
-            // Fallback to JS event injection if intercepted or obscured
             js.ExecuteScript(ResilientEngineScripts.SetValueScript, element, _name);
+        }
+
+        // Verification: ensure the field actually contains the value
+        var verified = (bool)(js.ExecuteScript(ResilientEngineScripts.VerifyInputValueScript, element, _name) ?? false);
+        if (!verified)
+        {
+            throw new InvalidOperationException($"Verification failed: 'First Name' does not contain '{_name}'");
         }
 
         return true;
@@ -54,7 +60,7 @@ public class GenderInteractor : IFieldInteractor
 
         if (element == null)
         {
-            throw new NoSuchElementException($"[Tier 1/2] Could not locate 'Gender' choice '{choiceString}' in {contextDescription}");
+            throw new NoSuchElementException($"Could not locate 'Gender' option '{choiceString}' in {contextDescription}");
         }
 
         try
@@ -63,8 +69,14 @@ public class GenderInteractor : IFieldInteractor
         }
         catch
         {
-            // Fallback to synthetic JS click
             js.ExecuteScript(ResilientEngineScripts.SafeClickScript, element);
+        }
+
+        // Verification: check if the radio was successfully checked
+        var isChecked = (bool)(js.ExecuteScript(ResilientEngineScripts.VerifyRadioSelectedScript, element) ?? false);
+        if (!isChecked)
+        {
+            throw new InvalidOperationException($"Verification failed: Gender radio option '{choiceString}' is not selected.");
         }
 
         return true;
@@ -87,18 +99,20 @@ public class StateInteractor : IFieldInteractor
 
         if (res is Dictionary<string, object> dict && dict.TryGetValue("element", out var elObj) && elObj is IWebElement el)
         {
-            var success = (bool)(js.ExecuteScript(ResilientEngineScripts.InteractDropdownScript, el, _state) ?? false);
-            return success;
-        }
-
-        // Direct search fallback: any <select> in context
-        var selects = driver.FindElements(By.TagName("select"));
-        if (selects.Count > 0)
-        {
-            js.ExecuteScript(ResilientEngineScripts.InteractDropdownScript, selects[0], _state);
+            var interactRes = js.ExecuteScript(ResilientEngineScripts.InteractDropdownScript, el, _state);
+            if (interactRes is Dictionary<string, object> resDict)
+            {
+                var success = resDict.TryGetValue("success", out var s) && s is bool b && b;
+                if (!success)
+                {
+                    var reason = resDict.TryGetValue("reason", out var r) ? r?.ToString() : "Unknown reason";
+                    throw new InvalidOperationException($"Failed to select State '{_state}': {reason}");
+                }
+                return true;
+            }
             return true;
         }
 
-        throw new NoSuchElementException($"[Tier 1/2/3] Could not locate 'State' dropdown in {contextDescription}");
+        throw new NoSuchElementException($"Could not locate 'State' dropdown in {contextDescription}");
     }
 }

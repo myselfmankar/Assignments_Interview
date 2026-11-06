@@ -6,11 +6,29 @@ namespace AdaptiveFormAutomation.Core;
 /// Injected JavaScript engine that discovers elements across:
 /// 1. Standard DOM
 /// 2. Deeply nested open Shadow DOMs (up to arbitrary depth)
-/// 3. Standard & custom UI elements (native <select>, ARIA combobox, custom div dropdowns, radio inputs/labels)
-/// 4. Spatial Geometry Proximity (bounding box layout) as a bulletproof fallback when all attributes fail.
+/// 3. Standard & custom UI elements
+/// 4. Spatial Geometry Proximity fallback with strict threshold and ambiguity checks.
 /// </summary>
 public static class ResilientEngineScripts
 {
+    // Script to check if the current context contains form controls
+    public const string HasFormControlsScript = @"
+        const root = document;
+        function hasInputs(node) {
+            if (!node) return false;
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                if (['INPUT', 'SELECT', 'TEXTAREA'].includes(node.tagName)) return true;
+                if (node.shadowRoot && hasInputs(node.shadowRoot)) return true;
+            }
+            const children = node.children || [];
+            for (let i = 0; i < children.length; i++) {
+                if (hasInputs(children[i])) return true;
+            }
+            return false;
+        }
+        return hasInputs(root);
+    ";
+
     public const string FindTextInputScript = @"
         const targetLabel = (arguments[0] || '').toLowerCase().trim();
         const root = arguments[1] || document;
@@ -41,8 +59,7 @@ public static class ResilientEngineScripts
         if (inputs.length === 0) return null;
 
         // Tier 1: Computed label / accessibility name / explicit <label for>
-        let best = null;
-        let bestScore = -1;
+        let scored = [];
 
         for (const inp of inputs) {
             let score = 0;
@@ -54,8 +71,12 @@ public static class ResilientEngineScripts
             let labelText = '';
             if (id) {
                 const docRoot = inp.getRootNode ? inp.getRootNode() : document;
-                const l = docRoot.querySelector ? docRoot.querySelector(`label[for=""${CSS.escape(id)}""]`) : null;
-                if (l) labelText += ' ' + l.innerText;
+                if (docRoot.querySelector) {
+                    try {
+                        const l = docRoot.querySelector('label[for=""' + CSS.escape(id) + '""]');
+                        if (l) labelText += ' ' + l.innerText;
+                    } catch (e) {}
+                }
             }
             const parentLabel = inp.closest('label');
             if (parentLabel) labelText += ' ' + parentLabel.innerText;
@@ -68,40 +89,55 @@ public static class ResilientEngineScripts
             if (combined.includes(targetLabel)) score += 100;
             if (targetLabel.includes('first') && combined.includes('first')) score += 50;
             if (combined.includes('name') && !combined.includes('last')) score += 20;
+            if (combined.includes('last') && targetLabel.includes('first')) score -= 80;
 
-            if (score > bestScore) {
-                bestScore = score;
-                best = inp;
+            if (score >= 40) {
+                scored.push({ input: inp, score });
             }
         }
 
-        if (bestScore >= 50) return best;
+        scored.sort((a, b) => b.score - a.score);
 
-        // Tier 2: Spatial Proximity Fallback (Bounding box nearest to text containing 'First Name')
+        // Reject if ambiguous
+        if (scored.length > 1 && scored[0].score === scored[1].score && scored[0].score >= 50) {
+            // Check if one is an exact match for targetLabel
+            const exact0 = scored[0].input.placeholder?.toLowerCase() === targetLabel || scored[0].input.name?.toLowerCase() === targetLabel;
+            const exact1 = scored[1].input.placeholder?.toLowerCase() === targetLabel || scored[1].input.name?.toLowerCase() === targetLabel;
+            if (exact0 && !exact1) return scored[0].input;
+            if (!exact0 && exact1) return scored[1].input;
+        }
+
+        if (scored.length > 0 && scored[0].score >= 40) {
+            return scored[0].input;
+        }
+
+        // Tier 2: Spatial Proximity Fallback with confidence threshold
         const allTextNodes = getAllDeep(root, el => {
             return (el.tagName === 'LABEL' || el.tagName === 'SPAN' || el.tagName === 'P' || el.tagName === 'DIV') 
-                && el.innerText && el.innerText.toLowerCase().includes(targetLabel);
+                && el.innerText && el.innerText.toLowerCase().trim().includes(targetLabel);
         });
 
         if (allTextNodes.length > 0) {
             const labelRect = allTextNodes[0].getBoundingClientRect();
             let nearestInput = null;
-            let minDist = 999999;
+            let minDist = 300; // Must be within reasonable pixel proximity
             for (const inp of inputs) {
                 const r = inp.getBoundingClientRect();
-                // Check if directly below or to the right
                 const dy = r.top - labelRect.bottom;
                 const dx = r.left - labelRect.left;
-                const dist = Math.sqrt(Math.max(0, dy) * Math.max(0, dy) + Math.max(0, dx) * Math.max(0, dx));
-                if (dist < minDist) {
-                    minDist = dist;
-                    nearestInput = inp;
+                if (dy >= -20 && dy <= 120 && Math.abs(dx) <= 300) {
+                    const dist = Math.sqrt(Math.max(0, dy) * Math.max(0, dy) + Math.max(0, dx) * Math.max(0, dx));
+                    if (dist < minDist) {
+                        minDist = dist;
+                        nearestInput = inp;
+                    }
                 }
             }
             if (nearestInput) return nearestInput;
         }
 
-        return best || inputs[0];
+        // Return null instead of unsafe inputs[0]
+        return null;
     ";
 
     public const string FindRadioChoiceScript = @"
@@ -125,24 +161,30 @@ public static class ResilientEngineScripts
             return res;
         }
 
-        // Tier 1: Look for radio inputs or elements with role='radio'
         const radios = getAllDeep(root, el => {
             return (el.tagName === 'INPUT' && (el.getAttribute('type') || '').toLowerCase() === 'radio') 
                 || (el.getAttribute('role') || '').toLowerCase() === 'radio';
         });
 
+        // 1. Group-Constrained matching: Must match group label AND choice value
+        let matches = [];
         for (const r of radios) {
             const val = (r.value || '').toLowerCase();
+            const name = (r.name || '').toLowerCase();
             const id = r.id || '';
             const ariaLabel = (r.getAttribute('aria-label') || '').toLowerCase();
             
             let labelText = '';
             if (id) {
                 const docRoot = r.getRootNode ? r.getRootNode() : document;
-                const l = docRoot.querySelector ? docRoot.querySelector(`label[for=""${CSS.escape(id)}""]`) : null;
-                if (l) labelText += ' ' + l.innerText;
-                const s = docRoot.querySelector ? docRoot.querySelector(`span[for=""${CSS.escape(id)}""]`) : null;
-                if (s) labelText += ' ' + s.innerText;
+                if (docRoot.querySelector) {
+                    try {
+                        const l = docRoot.querySelector('label[for=""' + CSS.escape(id) + '""]');
+                        if (l) labelText += ' ' + l.innerText;
+                        const s = docRoot.querySelector('span[for=""' + CSS.escape(id) + '""]');
+                        if (s) labelText += ' ' + s.innerText;
+                    } catch (e) {}
+                }
             }
             const parentLabel = r.closest('label');
             if (parentLabel) labelText += ' ' + parentLabel.innerText;
@@ -150,24 +192,37 @@ public static class ResilientEngineScripts
                 labelText += ' ' + r.nextElementSibling.innerText;
             }
 
-            const combined = `${val} ${ariaLabel} ${labelText}`.toLowerCase();
-            if (combined.includes(choiceValue)) {
-                return r;
+            // Check group context (parent container text or radio name)
+            const groupText = ((r.closest('.form-group, fieldset, div')?.innerText || '') + ' ' + name).toLowerCase();
+            const inGenderGroup = groupText.includes(groupLabel);
+
+            const combinedVal = `${val} ${ariaLabel} ${labelText}`.toLowerCase();
+            if (combinedVal.includes(choiceValue)) {
+                matches.push({ radio: r, inGroup: inGenderGroup });
             }
         }
 
-        // Tier 2: Look for clickable label/span containing the choice text
-        const clickableLabels = getAllDeep(root, el => {
-            const tag = el.tagName;
-            const text = (el.innerText || '').toLowerCase().trim();
-            return (tag === 'LABEL' || tag === 'SPAN' || tag === 'DIV') && text === choiceValue;
+        // Prefer radio confirmed in the gender group
+        const groupMatches = matches.filter(m => m.inGroup);
+        if (groupMatches.length > 0) return groupMatches[0].radio;
+        if (matches.length === 1) return matches[0].radio;
+
+        // 2. Clickable label/span containing choice text inside gender group
+        const groupContainers = getAllDeep(root, el => {
+            return (el.tagName === 'DIV' || el.tagName === 'FIELDSET') 
+                && el.innerText && el.innerText.toLowerCase().includes(groupLabel);
         });
 
-        if (clickableLabels.length > 0) {
-            return clickableLabels[0];
+        for (const container of groupContainers) {
+            const spans = getAllDeep(container, el => {
+                const text = (el.innerText || '').toLowerCase().trim();
+                return ['LABEL', 'SPAN', 'INPUT'].includes(el.tagName) && text === choiceValue;
+            });
+            if (spans.length > 0) return spans[0];
         }
 
-        return radios.length > 0 ? radios[0] : null;
+        // Never fallback to arbitrary radios[0]
+        return null;
     ";
 
     public const string FindDropdownScript = @"
@@ -192,14 +247,17 @@ public static class ResilientEngineScripts
 
         // Tier 1: Look for native <select>
         const selects = getAllDeep(root, el => el.tagName === 'SELECT');
+        let scored = [];
         for (const s of selects) {
             const id = (s.id || '').toLowerCase();
             const name = (s.name || '').toLowerCase();
             let labelText = '';
             const docRoot = s.getRootNode ? s.getRootNode() : document;
             if (id && docRoot.querySelector) {
-                const l = docRoot.querySelector(`label[for=""${CSS.escape(s.id)}""]`);
-                if (l) labelText += ' ' + l.innerText;
+                try {
+                    const l = docRoot.querySelector('label[for=""' + CSS.escape(s.id) + '""]');
+                    if (l) labelText += ' ' + l.innerText;
+                } catch(e) {}
             }
             const parentLabel = s.closest('label');
             if (parentLabel) labelText += ' ' + parentLabel.innerText;
@@ -208,12 +266,15 @@ public static class ResilientEngineScripts
             }
 
             const combined = `${id} ${name} ${labelText}`.toLowerCase();
-            if (combined.includes(targetLabel)) return { element: s, type: 'native-select' };
+            if (combined.includes(targetLabel)) {
+                scored.push({ element: s, type: 'native-select', score: 100 });
+            }
         }
 
-        if (selects.length > 0) return { element: selects[0], type: 'native-select' };
+        if (scored.length > 0) return scored[0];
+        if (selects.length === 1) return { element: selects[0], type: 'native-select', score: 50 };
 
-        // Tier 2: Look for custom combobox or autocomplete input (e.g., role='combobox' or class*='autocomplete')
+        // Tier 2: Look for custom combobox
         const customDropdowns = getAllDeep(root, el => {
             const role = (el.getAttribute('role') || '').toLowerCase();
             const hasPopup = el.getAttribute('aria-haspopup');
@@ -222,7 +283,10 @@ public static class ResilientEngineScripts
         });
 
         for (const cd of customDropdowns) {
-            return { element: cd, type: 'custom-combobox' };
+            const parentText = (cd.closest('.form-group, div')?.innerText || '').toLowerCase();
+            if (parentText.includes(targetLabel)) {
+                return { element: cd, type: 'custom-combobox', score: 80 };
+            }
         }
 
         return null;
@@ -232,38 +296,69 @@ public static class ResilientEngineScripts
         const target = arguments[0];
         const valToSelect = arguments[1];
 
-        if (!target) return false;
+        if (!target) return { success: false, reason: 'Target element is null' };
 
         // Native select handling
         if (target.tagName === 'SELECT') {
             let matched = false;
+            let matchedIndex = -1;
             const search = valToSelect.toLowerCase().trim();
             for (let i = 0; i < target.options.length; i++) {
                 const opt = target.options[i];
                 const optText = (opt.text || '').toLowerCase().trim();
                 const optVal = (opt.value || '').toLowerCase().trim();
-                if (optText.includes(search) || optVal.includes(search) || search.includes(optText)) {
+                if (optText === search || optVal === search || optText.includes(search) || optVal.includes(search)) {
                     target.selectedIndex = i;
                     matched = true;
+                    matchedIndex = i;
                     break;
                 }
             }
-            if (!matched && target.options.length > 1) {
-                // Select first non-placeholder option
-                target.selectedIndex = 1;
-                matched = true;
+
+            if (!matched) {
+                return { success: false, reason: `Requested option '${valToSelect}' not found in dropdown.` };
             }
+
             target.dispatchEvent(new Event('focus', { bubbles: true }));
             target.dispatchEvent(new Event('input', { bubbles: true }));
             target.dispatchEvent(new Event('change', { bubbles: true }));
             target.dispatchEvent(new Event('blur', { bubbles: true }));
-            return matched;
+
+            // Verification
+            const finalIndex = target.selectedIndex;
+            const selectedText = target.options[finalIndex]?.text || '';
+            const selectedVal = target.options[finalIndex]?.value || '';
+            const verified = selectedText.toLowerCase().includes(search) || selectedVal.toLowerCase().includes(search);
+            return { success: verified, selectedValue: selectedText, reason: verified ? null : 'Selection verification mismatch' };
         }
 
         // Custom dropdown click trigger
         target.scrollIntoView({ behavior: 'instant', block: 'center' });
         target.click();
         target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+        return { success: true, selectedValue: valToSelect, reason: null };
+    ";
+
+    public const string VerifyInputValueScript = @"
+        const el = arguments[0];
+        const expected = (arguments[1] || '').toLowerCase().trim();
+        if (!el) return false;
+        const actual = (el.value || '').toLowerCase().trim();
+        return actual.includes(expected) || expected.includes(actual);
+    ";
+
+    public const string VerifyRadioSelectedScript = @"
+        const el = arguments[0];
+        if (!el) return false;
+        if (el.tagName === 'INPUT' && el.type === 'radio') {
+            return el.checked === true;
+        }
+        // Check associated input if a label/span was clicked
+        const id = el.getAttribute('for') || el.id;
+        if (id) {
+            const input = document.getElementById(id);
+            if (input && input.type === 'radio') return input.checked === true;
+        }
         return true;
     ";
 
