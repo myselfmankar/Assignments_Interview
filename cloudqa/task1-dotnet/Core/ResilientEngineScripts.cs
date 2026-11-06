@@ -402,8 +402,6 @@ public static class ResilientEngineScripts
         el.scrollIntoView({ behavior: 'instant', block: 'center' });
         el.focus();
         el.click();
-        el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-        el.dispatchEvent(new Event('change', { bubbles: true }));
         return true;
     ";
 
