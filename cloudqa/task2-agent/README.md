@@ -15,7 +15,7 @@ Build an autonomous browser agent that accepts plain-English test descriptions (
 
 ## How It Works
 
-\`\`\`mermaid
+```mermaid
 flowchart TD
     Prompt["Plain-English test case"] --> Snapshot["Capture visible DOM snapshot"]
     Snapshot --> Planner["Gemini creates JSON action plan"]
@@ -24,7 +24,7 @@ flowchart TD
     Locate --> Execute["Selenium executes browser actions"]
     Execute --> Assert["Verify step assertions and final success condition"]
     Assert --> Result["PASS / FAIL with failure screenshot"]
-\`\`\`
+```
 
 ---
 
