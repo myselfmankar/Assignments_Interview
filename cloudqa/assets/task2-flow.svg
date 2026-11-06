@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="280" viewBox="0 0 1100 280">
+<defs><style>text{font-family:Inter,Arial,sans-serif;fill:#172033}.h{font-size:18px;font-weight:700}.s{font-size:14px;fill:#475569}.b{fill:#f5f3ff;stroke:#8b5cf6;stroke-width:2}.a{stroke:#64748b;stroke-width:2.5;fill:none;marker-end:url(#m)}</style><marker id="m" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" stroke="#64748b" fill="none"/></marker></defs>
+<rect width="1100" height="280" rx="16" fill="#faf8ff"/>
+<g><rect x="18" y="70" width="150" height="95" rx="12" class="b"/><text x="93" y="106" text-anchor="middle" class="h">Prompt</text><text x="93" y="132" text-anchor="middle" class="s">plain English</text></g>
+<path d="M168 118 H190" class="a"/>
+<g><rect x="200" y="70" width="155" height="95" rx="12" class="b"/><text x="277" y="106" text-anchor="middle" class="h">Page snapshot</text><text x="277" y="132" text-anchor="middle" class="s">visible controls</text></g>
+<path d="M355 118 H377" class="a"/>
+<g><rect x="387" y="70" width="145" height="95" rx="12" class="b"/><text x="459" y="106" text-anchor="middle" class="h">Gemini</text><text x="459" y="132" text-anchor="middle" class="s">JSON steps</text></g>
+<path d="M532 118 H554" class="a"/>
+<g><rect x="564" y="70" width="145" height="95" rx="12" class="b"/><text x="636" y="106" text-anchor="middle" class="h">Validate</text><text x="636" y="132" text-anchor="middle" class="s">safe actions</text></g>
+<path d="M709 118 H731" class="a"/>
+<g><rect x="741" y="70" width="155" height="95" rx="12" class="b"/><text x="818" y="106" text-anchor="middle" class="h">Selenium</text><text x="818" y="132" text-anchor="middle" class="s">locate + act</text></g>
+<path d="M896 118 H918" class="a"/>
+<g><rect x="928" y="70" width="154" height="95" rx="12" class="b"/><text x="1005" y="106" text-anchor="middle" class="h">Assertions</text><text x="1005" y="132" text-anchor="middle" class="s">PASS / FAIL</text></g>
+<text x="550" y="215" text-anchor="middle" class="s">Locator searches the DOM, accessible open Shadow DOM and nested iframes (up to 4 levels).</text>
+<text x="550" y="239" text-anchor="middle" class="s">Failure captures a timestamped screenshot; Task 2 uses its own Python locator, not Task 1's C# code.</text></svg>
