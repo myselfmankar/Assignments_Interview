@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CloudQA · Browser Automation</title>
+<style>
+:root{--ink:#142238;--muted:#65748b;--blue:#2563eb;--line:#dce4ef;--paper:#fff;--wash:#f4f7fb}
+*{box-sizing:border-box}html,body{height:100%;margin:0;background:#e9eef5;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+body{display:grid;place-items:center}.deck{width:min(96vw,1440px);aspect-ratio:16/9;background:var(--paper);box-shadow:0 24px 80px #14223820;position:relative;overflow:hidden;border-radius:16px}
+.slide{position:absolute;inset:0;padding:7.2% 8%;display:none;flex-direction:column;justify-content:center;background:linear-gradient(135deg,#fff 0%,#fff 65%,#f7faff 100%)}
+.slide.active{display:flex}.eyebrow{font-size:clamp(10px,1vw,14px);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--blue);margin-bottom:2.2%}
+h1{font-size:clamp(34px,5.2vw,76px);line-height:1.04;letter-spacing:-.045em;margin:0;max-width:900px}
+h2{font-size:clamp(27px,3.2vw,46px);letter-spacing:-.035em;margin:0 0 2.5%}
+.lead{font-size:clamp(16px,1.8vw,25px);line-height:1.5;color:var(--muted);max-width:820px;margin-top:2.5%}
+.kicker{font-size:clamp(12px,1.2vw,17px);color:var(--muted);margin-top:5%}
+.pill{display:inline-flex;border:1px solid var(--line);border-radius:99px;padding:9px 15px;color:#33445c;font-size:clamp(11px,1vw,14px);margin:0 8px 8px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:2.5%;margin-top:2%}
+.panel{border:1px solid var(--line);border-radius:14px;padding:5%;background:#fff;min-height:150px}
+.panel h3{font-size:clamp(17px,1.6vw,23px);margin:0 0 10px}.panel p{font-size:clamp(13px,1.2vw,17px);line-height:1.5;color:var(--muted);margin:0}
+.flow{display:flex;align-items:stretch;gap:10px;margin:4% 0 2%}
+.node{flex:1;border:1px solid #cbd8eb;background:#f8fbff;border-radius:12px;padding:18px 12px;text-align:center;display:flex;flex-direction:column;justify-content:center;min-width:0}
+.node strong{font-size:clamp(12px,1.35vw,19px)}.node small{font-size:clamp(10px,1vw,14px);color:var(--muted);margin-top:8px}.arrow{align-self:center;color:#91a1b7;font-size:clamp(16px,2vw,28px)}
+.note{font-size:clamp(12px,1.1vw,16px);color:var(--muted);line-height:1.5;margin-top:2%}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:4%;align-items:center;margin-top:2%}
+.big-number{font-size:clamp(50px,8vw,110px);font-weight:750;letter-spacing:-.06em;color:var(--blue)}
+.list{display:grid;gap:14px}.item{display:flex;gap:14px;align-items:flex-start;font-size:clamp(14px,1.3vw,18px);line-height:1.4}.dot{width:9px;height:9px;background:var(--blue);border-radius:50%;margin-top:7px;flex:none}
+.footer{position:absolute;bottom:3.4%;left:8%;right:8%;display:flex;justify-content:space-between;color:#98a5b7;font-size:clamp(9px,.8vw,12px);letter-spacing:.04em}
+.controls{position:fixed;bottom:18px;display:flex;gap:12px;align-items:center;color:#516176;font-size:13px}
+button{border:1px solid #cbd5e1;background:#fff;color:#1e293b;border-radius:9px;padding:9px 15px;font:inherit;cursor:pointer}button:hover{border-color:var(--blue)}
+@media(max-width:650px){.deck{width:100vw;border-radius:0}.slide{padding:8% 6%}.grid{gap:2%}.panel{padding:4%}.flow{gap:4px}.node{padding:8px 4px}.footer{left:6%;right:6%}}
+@media print{html,body{background:#fff;height:auto;display:block}.deck{width:100%;box-shadow:none;border-radius:0;aspect-ratio:auto;overflow:visible}.slide{position:relative;display:flex!important;height:56.25vw;page-break-after:always}.controls{display:none}}
+</style>
+</head>
+<body>
+<main class="deck" aria-label="CloudQA presentation">
+<section class="slide active">
+<div class="eyebrow">CloudQA · Practical Assessment</div>
+<h1>Resilient browser automation.</h1>
+<p class="lead">Two focused approaches to automating and verifying real browser workflows.</p>
+<div style="margin-top:4%"><span class="pill">C# · Selenium</span><span class="pill">Python · Gemini · Selenium</span></div>
+<div class="footer"><span>CLOUDQA</span><span>01 / 05</span></div>
+</section>
+<section class="slide">
+<div class="eyebrow">The challenge</div><h2>Modern forms are not always simple.</h2>
+<div class="grid">
+<div class="panel"><h3>Changing interfaces</h3><p>Labels, layouts, custom controls and nested frames make fixed selectors fragile.</p></div>
+<div class="panel"><h3>Unclear test intent</h3><p>Manual translation from a plain-English request into browser steps takes time.</p></div>
+</div>
+<p class="note">Goal: locate controls by meaning, execute safely, and verify the outcome.</p>
+<div class="footer"><span>CLOUDQA</span><span>02 / 05</span></div>
+</section>
+<section class="slide">
+<div class="eyebrow">Task 1 · Deterministic automation</div><h2>Fill the form. Verify every field.</h2>
+<div class="flow">
+<div class="node"><strong>Program.cs</strong><small>Configuration</small></div><div class="arrow">→</div>
+<div class="node"><strong>Form service</strong><small>Document + frames</small></div><div class="arrow">→</div>
+<div class="node"><strong>Field interactors</strong><small>Name · Gender · State</small></div><div class="arrow">→</div>
+<div class="node"><strong>Verify</strong><small>Pass / Fail</small></div>
+</div>
+<div class="list" style="margin-top:3%">
+<div class="item"><span class="dot"></span><span>Semantic discovery across standard DOM and accessible open Shadow DOM.</span></div>
+<div class="item"><span class="dot"></span><span>Native and custom dropdown handling, with post-action checks.</span></div>
+</div>
+<div class="footer"><span>TASK 1 · C# / SELENIUM</span><span>03 / 05</span></div>
+</section>
+<section class="slide">
+<div class="eyebrow">Task 2 · AI-assisted testing</div><h2>Describe the test. The agent builds the steps.</h2>
+<div class="flow">
+<div class="node"><strong>Plain English</strong><small>Test instruction</small></div><div class="arrow">→</div>
+<div class="node"><strong>Gemini</strong><small>JSON plan</small></div><div class="arrow">→</div>
+<div class="node"><strong>Validate</strong><small>Allow-listed actions</small></div><div class="arrow">→</div>
+<div class="node"><strong>Selenium</strong><small>Execute + assert</small></div>
+</div>
+<div class="grid">
+<div class="panel"><h3>Resilient discovery</h3><p>Semantic matching, open Shadow DOM and nested iframe traversal.</p></div>
+<div class="panel"><h3>Verified result</h3><p>Required assertions, final success condition and failure screenshot.</p></div>
+</div>
+<div class="footer"><span>TASK 2 · PYTHON / GEMINI / SELENIUM</span><span>04 / 05</span></div>
+</section>
+<section class="slide">
+<div class="eyebrow">How they fit together</div><h2>Shared principles. Separate implementations.</h2>
+<div class="split">
+<div><div class="big-number">2</div><p class="lead" style="margin:0">Independent automation solutions.</p></div>
+<div class="list">
+<div class="item"><span class="dot"></span><span>Task 1 is a focused C# form automation engine.</span></div>
+<div class="item"><span class="dot"></span><span>Task 2 is a Python agent that plans browser workflows with Gemini.</span></div>
+<div class="item"><span class="dot"></span><span>Task 2 does not import or call Task 1. Both apply semantic discovery and verification.</span></div>
+</div>
+</div>
+<p class="note" style="margin-top:5%">The common idea: identify the right control, perform the action, and prove the expected result.</p>
+<div class="footer"><span>CLOUDQA · SUMMARY</span><span>05 / 05</span></div>
+</section>
+</main>
+<nav class="controls" aria-label="Slide controls">
+<button id="prev" type="button">← Previous</button><span id="count">1 / 5</span><button id="next" type="button">Next →</button><span>Use ← → keys · F for fullscreen · Print to PDF</span>
+</nav>
+<script>
+const slides=[...document.querySelectorAll(".slide")];let index=0;
+function show(n){index=Math.max(0,Math.min(slides.length-1,n));slides.forEach((s,i)=>s.classList.toggle("active",i===index));document.getElementById("count").textContent=(index+1)+" / "+slides.length;}
+document.getElementById("prev").addEventListener("click",()=>show(index-1));
+document.getElementById("next").addEventListener("click",()=>show(index+1));
+document.addEventListener("keydown",e=>{if(["ArrowRight","PageDown"," "].includes(e.key)){e.preventDefault();show(index+1)}if(["ArrowLeft","PageUp"].includes(e.key)){e.preventDefault();show(index-1)}if(e.key.toLowerCase()==="f"){if(!document.fullscreenElement)document.querySelector(".deck").requestFullscreen?.();else document.exitFullscreen?.()}});
+</script>
+</body></html>
