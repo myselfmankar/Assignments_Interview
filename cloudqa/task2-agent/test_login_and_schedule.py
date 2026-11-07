@@ -1,35 +1,32 @@
-"""Simple test runner using creds dict formatted into the prompt via f-string."""
+"""Demo runner for the customer meeting workflow.
+
+Set CUSTOMER_EMAIL, CUSTOMER_PASSWORD and GEMINI_API_KEY in your environment.
+Credentials are inserted into the validated plan locally, after Gemini responds,
+so they are not sent to the model as part of the planning prompt.
+"""
+import os
 import subprocess
 import sys
 
-# 1. Simple credentials dictionary
-CREDS = {
-    "email": "vaishnavmankar.pict@gmail.com",
-    "password": "AliceBay#123",
-    "meet_title": "Onboarding Call",
-    "meet_date": "10",
-    "meet_platform": "Google Meet",
-}
-
-# 2. Plain-English test prompt formatted with f-string starting from https://phptravels.com/demo
-TEST_PROMPT = (
-    f"Navigate to the customer login or sign-in page from the demo page. "
-    f"Log in as customer using email {CREDS['email']} and password {CREDS['password']}, "
-    f"and click Sign In. Once on the dashboard, navigate to Meetings, click Create Meeting. "
-    f"Fill Title with {CREDS['meet_title']}, click Start, click {CREDS['meet_date']}, click OK, "
-    f"fill Location with {CREDS['meet_platform']}, and click Submit for Review. "
-    f"Verify that Meeting request submitted for review is displayed."
-)
-
 URL = "https://phptravels.com/demo"
 
-def main():
-    print("=" * 70)
-    print("Starting Test via Agent...")
-    print(f"URL   : {URL}")
-    print(f"Prompt: {TEST_PROMPT}")
-    print("=" * 70)
+TEST_PROMPT = (
+    "Navigate from the demo page to the customer sign-in page. "
+    "Sign in using email {{CUSTOMER_EMAIL}} and password {{CUSTOMER_PASSWORD}}. "
+    "After reaching the dashboard, open Meetings and choose Create Meeting. "
+    "Create a meeting titled 'Onboarding Call', set the date to the 10th, "
+    "set the location to 'Google Meet', and submit it for review. "
+    "Verify that the meeting request confirmation is displayed."
+)
 
+
+def main() -> None:
+    required = ("GEMINI_API_KEY", "CUSTOMER_EMAIL", "CUSTOMER_PASSWORD")
+    missing = [name for name in required if not os.getenv(name)]
+    if missing:
+        raise SystemExit("Missing required environment variables: " + ", ".join(missing))
+
+    print("Starting customer meeting workflow (credentials hidden).")
     cmd = [
         sys.executable,
         "agent.py",
@@ -38,9 +35,9 @@ def main():
         "--headed",
         "--keep-open",
     ]
+    result = subprocess.run(cmd, check=False)
+    raise SystemExit(result.returncode)
 
-    result = subprocess.run(cmd)
-    sys.exit(result.returncode)
 
 if __name__ == "__main__":
     main()
