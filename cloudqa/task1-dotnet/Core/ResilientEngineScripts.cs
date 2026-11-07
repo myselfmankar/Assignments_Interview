@@ -215,8 +215,9 @@ public static class ResilientEngineScripts
         // Only accept a unique match in the labelled group. If the group cannot
         // be established, accept a globally unique option; otherwise fail closed.
         const groupMatches = matches.filter(m => m.inGroup);
-        if (groupMatches.length > 0) return groupMatches[0].radio;
-        if (matches.length > 0) return matches[0].radio;
+        if (groupMatches.length === 1) return groupMatches[0].radio;
+        if (groupMatches.length > 1) return null;
+        if (matches.length === 1) return matches[0].radio;
         return null;
     ";
 
@@ -266,7 +267,8 @@ public static class ResilientEngineScripts
             }
         }
 
-        if (scored.length > 0) return scored[0];
+        if (scored.length === 1) return scored[0];
+        if (scored.length > 1) return null; // multiple matching State controls are ambiguous
         if (selects.length === 1) return { element: selects[0], type: 'native-select', score: 50 };
 
         // Tier 2: Look for custom combobox
