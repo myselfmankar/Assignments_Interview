@@ -127,7 +127,6 @@ for (const el of elements) {
     else if (isEmail && (el.type === 'email' || sNorm.includes('email') || sNorm.includes('@'))) score = 95;
     else if (isPass && (el.type === 'password' || sNorm.includes('password'))) score = 95;
     else if (sem.startsWith(target)) score = 80;
-    else if (sem.startsWith(target)) score = 80;
     else if (sem.includes(target)) score = 60;
     else {
         // Token match
@@ -418,6 +417,28 @@ def validate_plan(plan: dict[str, Any]) -> None:
         raise ValueError("Plan validation failed: include at least one verify_text or verify_element assertion.")
 
 
+def _inject_runtime_values(plan: dict[str, Any]) -> dict[str, Any]:
+    """Replace credential placeholders only after the LLM has returned its plan."""
+    replacements = {
+        "{{CUSTOMER_EMAIL}}": os.getenv("CUSTOMER_EMAIL", ""),
+        "{{CUSTOMER_PASSWORD}}": os.getenv("CUSTOMER_PASSWORD", ""),
+    }
+    if any(token in str(plan) for token in replacements) and not all(replacements.values()):
+        raise RuntimeError("Set CUSTOMER_EMAIL and CUSTOMER_PASSWORD in the environment before running this workflow.")
+
+    def visit(value):
+        if isinstance(value, dict):
+            return {key: visit(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [visit(item) for item in value]
+        if isinstance(value, str):
+            for token, secret in replacements.items():
+                value = value.replace(token, secret)
+        return value
+
+    return visit(plan)
+
+
 def make_plan(test_case: str, snapshot: dict[str, Any]) -> dict[str, Any]:
     """Generate and validate action plan from Gemini with retry & fallback."""
     api_key = os.getenv("GEMINI_API_KEY")
@@ -595,20 +616,16 @@ def _select_option(driver: webdriver.Chrome, element, value: str) -> None:
 
 
 def execute_step(driver: webdriver.Chrome, step: dict[str, Any]):
-    try:
-        modal_btn = driver.find_element(By.ID, 'acknowledgeDemoWarning')
-        if modal_btn.is_displayed():
-            modal_btn.click()
-            time.sleep(1)
-    except Exception:
-        pass
     """Execute one action; interaction success is not treated as assertion success."""
     action = step.get("action")
     target = step.get("target") or ""
     value = step.get("value")
     url = step.get("url")
 
-    print(f" -> [{action.upper()}] target='{target}' value='{value or ''}' ({step.get('reason', '')})")
+    display_value = value or ""
+    if display_value and display_value in {os.getenv("CUSTOMER_EMAIL"), os.getenv("CUSTOMER_PASSWORD")}:
+        display_value = "[REDACTED]"
+    print(f" -> [{action.upper()}] target='{target}' value='{display_value}' ({step.get('reason', '')})")
 
     if action == "goto":
         driver.get(url)
@@ -689,8 +706,8 @@ def execute_step(driver: webdriver.Chrome, step: dict[str, Any]):
             driver.execute_script(SAFE_SET_VALUE_SCRIPT, element, value or "")
         actual = (element.get_attribute("value") or "").strip()
         val_str = str(value or "").strip()
-        if actual != val_str and val_str not in actual and actual not in val_str:
-            raise AssertionError(f"Fill verification failed for '{target}'.")
+        if not val_str or actual != val_str:
+            raise AssertionError(f"Fill verification failed for '{target}': expected exact value was not present.")
     elif action == "select":
         _select_option(driver, element, str(value or ""))
     elif action == "press":
@@ -731,11 +748,15 @@ def run_test(test_case: str, start_url: str, headed: bool = False, keep_open: bo
 
         print("\n[3/4] Requesting action plan from Gemini (google-genai) ...")
         plan = make_plan(test_case, snapshot)
+        plan = _inject_runtime_values(plan)
         print("\nGENERATED TEST PLAN:")
         print(f"Understanding: {plan.get('test_understanding')}")
         print(f"Steps count  : {len(plan['steps'])}")
         for idx, step in enumerate(plan["steps"], 1):
-            print(f"  Step {idx}: {step['action'].upper()} -> target='{step.get('target', '')}' value='{step.get('value', '')}' (Reason: {step.get('reason')})")
+            step_value = step.get("value", "")
+            if step_value and step_value in {os.getenv("CUSTOMER_EMAIL"), os.getenv("CUSTOMER_PASSWORD")}:
+                step_value = "[REDACTED]"
+            print(f"  Step {idx}: {step['action'].upper()} -> target='{step.get('target', '')}' value='{step_value}' (Reason: {step.get('reason')})")
 
         print("\n[4/4] Executing test steps with Tiered Resilient Engine ...")
         for idx, step in enumerate(plan["steps"], 1):
