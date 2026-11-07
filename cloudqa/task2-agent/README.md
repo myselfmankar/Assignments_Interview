@@ -51,6 +51,19 @@ python agent.py --url https://phptravels.com/demo --test "Verify that the demo r
 
 Add `--headed` to show the browser window.
 
+### Customer meeting demo runner
+
+The optional `test_login_and_schedule.py` runner uses environment variables for credentials. Set these locally before running it:
+
+```powershell
+$env:GEMINI_API_KEY = "your-api-key"
+$env:CUSTOMER_EMAIL = "your-test-account-email"
+$env:CUSTOMER_PASSWORD = "your-test-account-password"
+python test_login_and_schedule.py
+```
+
+The prompt sends credential placeholders to Gemini; the actual values are inserted into the returned plan locally. Do not commit real credentials or put them in prompts, screenshots, logs, or source files. If credentials were previously committed, rotate them immediately; removing them in a later commit does not erase them from Git history.
+
 ## Tests
 
 The deterministic planner-contract tests do not launch Chrome or call Gemini:
