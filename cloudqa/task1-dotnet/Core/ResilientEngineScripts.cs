@@ -29,6 +29,177 @@ public static class ResilientEngineScripts
         return hasInputs(root);
     ";
 
+
+    // Discovers all distinct form containers in the current document / frame,
+    // including standard <form> elements and custom shadow host containers.
+    // Discovers all distinct form containers in the current document / frame,
+    // including standard <form> elements and custom shadow host containers.
+    // Resiliently fills any additional form fields present in the container
+    // (Last Name, DOB, Mobile, Email, Country, Hobbies, About, Agreement)
+    public const string FillAllAvailableFormFieldsScript = @"
+        const root = arguments[0] || document;
+        const profile = arguments[1] || {};
+
+        function getAllDeep(node, filterFn) {
+            let res = [];
+            if (!node) return res;
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                if (filterFn(node)) res.push(node);
+                if (node.shadowRoot) {
+                    res.push(...getAllDeep(node.shadowRoot, filterFn));
+                }
+            }
+            const children = node.children || [];
+            for (let i = 0; i < children.length; i++) {
+                res.push(...getAllDeep(children[i], filterFn));
+            }
+            return res;
+        }
+
+        function setVal(el, val) {
+            if (!el || !val) return;
+            el.scrollIntoView({ behavior: 'instant', block: 'center' });
+            el.focus();
+            el.value = val;
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+            el.dispatchEvent(new Event('blur', { bubbles: true }));
+        }
+
+        function check(el, state) {
+            if (!el) return;
+            el.scrollIntoView({ behavior: 'instant', block: 'center' });
+            if (el.checked !== state) {
+                el.click();
+                el.checked = state;
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+
+        // 1. Text Inputs (Last Name, DOB, Email, Country)
+        const textInputs = getAllDeep(root, el => el.tagName === 'INPUT' && ['text', 'search', ''].includes((el.type || 'text').toLowerCase()));
+        for (const inp of textInputs) {
+            const id = (inp.id || '').toLowerCase();
+            const name = (inp.name || '').toLowerCase();
+            const slot = (inp.closest('[slot]')?.getAttribute('slot') || '').toLowerCase();
+            const placeholder = (inp.placeholder || '').toLowerCase();
+
+            if (id === 'lname' || name === 'lname' || slot.includes('lname') || id.includes('last') || name.includes('last') || placeholder.includes('surname')) {
+                setVal(inp, profile.lastName || 'Mankar');
+            } else if (id === 'dob' || name.includes('birth') || placeholder.includes('yyyy')) {
+                setVal(inp, profile.dob || '1998-05-15');
+            } else if (id === 'email' || name.includes('email') || placeholder.includes('email')) {
+                setVal(inp, profile.email || 'vaishnav@example.com');
+            } else if (id === 'country' || name.includes('country') || placeholder.includes('country')) {
+                setVal(inp, profile.country || 'India');
+            }
+        }
+
+        // 2. Mobile Number
+        const allInputs = getAllDeep(root, el => el.tagName === 'INPUT');
+        for (const inp of allInputs) {
+            const id = (inp.id || '').toLowerCase();
+            const name = (inp.name || '').toLowerCase();
+            const ph = (inp.placeholder || '').toLowerCase();
+            if (id.includes('mobile') || name.includes('mobile') || ph.includes('mobile')) {
+                setVal(inp, profile.mobile || '9876543210');
+            }
+        }
+
+        // 3. Checkboxes (Hobbies & Agree)
+        const checkboxes = getAllDeep(root, el => el.tagName === 'INPUT' && (el.type || '').toLowerCase() === 'checkbox');
+        for (const cb of checkboxes) {
+            const id = (cb.id || '').toLowerCase();
+            const name = (cb.name || '').toLowerCase();
+            const val = (cb.value || '').toLowerCase();
+            if (id === 'agree' || name === 'agree' || id.includes('agree')) {
+                check(cb, true);
+            } else if (id === 'cricket' || val === 'cricket' || id === 'reading' || val === 'reading') {
+                check(cb, true);
+            }
+        }
+
+        // 4. Textarea (About Yourself)
+        const textareas = getAllDeep(root, el => el.tagName === 'TEXTAREA' && el.style.display !== 'none');
+        for (const ta of textareas) {
+            setVal(ta, profile.about || 'Resilient automated test execution covering all DOM and Shadow DOM variants.');
+        }
+
+        return true;
+    ";
+
+    // Discovers all distinct form containers in the current document / frame,
+    // associating them with readable section titles.
+    public const string FindFormContainersScript = @"
+        function getAllDeep(node, filterFn) {
+            let res = [];
+            if (!node) return res;
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                if (filterFn(node)) res.push(node);
+                if (node.shadowRoot) {
+                    res.push(...getAllDeep(node.shadowRoot, filterFn));
+                }
+            }
+            const children = node.children || [];
+            for (let i = 0; i < children.length; i++) {
+                res.push(...getAllDeep(children[i], filterFn));
+            }
+            return res;
+        }
+
+        const friendlyNames = {
+            'automationtestform': 'Standard Form',
+            'shadowdomautomationtestform': 'Shadow DOM Form',
+            'nestedshadowdomautomationtestform': 'Nested Shadow DOM Form',
+            'nestedshadowdomautomationtestform3': 'Nested Shadow DOM (3 Levels)',
+            'nestedshadowdomautomationtestform4': 'Nested Shadow DOM (4 Levels)',
+            'nestedshadowdomautomationtestform5': 'Nested Shadow DOM (5 Levels)',
+            'nestedshadowdomautomationtestform6': 'Nested Shadow DOM (6 Levels)'
+        };
+
+        const containers = [];
+        const forms = Array.from(document.querySelectorAll('form'));
+        for (const f of forms) {
+            const inputs = getAllDeep(f, el => el.tagName === 'INPUT');
+            const hasFname = inputs.some(i => {
+                const id = (i.id || '').toLowerCase();
+                const name = (i.name || '').toLowerCase();
+                const slot = (i.closest('[slot]')?.getAttribute('slot') || '').toLowerCase();
+                return id === 'fname' || name === 'fname' || slot.includes('fname') || id.includes('first') || name.includes('first');
+            });
+            if (hasFname) {
+                const fid = f.id || '';
+                const title = friendlyNames[fid] || ('Form #' + (fid || f.name || 'unnamed'));
+                containers.push({ name: title, element: f });
+            }
+        }
+
+        if (containers.length === 0) {
+            containers.push({ name: 'Default Form Context', element: null });
+        }
+        return containers;
+    ";
+
+    // Discovers all iframes in the current context, including those inside open Shadow DOMs
+    public const string FindDeepIframesScript = @"
+        function getAllDeep(node, filterFn) {
+            let res = [];
+            if (!node) return res;
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                if (filterFn(node)) res.push(node);
+                if (node.shadowRoot) {
+                    res.push(...getAllDeep(node.shadowRoot, filterFn));
+                }
+            }
+            const children = node.children || [];
+            for (let i = 0; i < children.length; i++) {
+                res.push(...getAllDeep(children[i], filterFn));
+            }
+            return res;
+        }
+        return getAllDeep(document.body, el => el.tagName === 'IFRAME');
+    ";
+
     public const string FindTextInputScript = @"
         const targetLabel = (arguments[0] || '').toLowerCase().trim();
         const root = arguments[1] || document;
@@ -84,12 +255,15 @@ public static class ResilientEngineScripts
                 for (let j = 0; j < inp.labels.length; j++) labelText += ' ' + inp.labels[j].innerText;
             }
 
-            const combined = `${labelText} ${name} ${placeholder} ${ariaLabel}`.toLowerCase();
+            const slot = (inp.closest('[slot]')?.getAttribute('slot') || '').toLowerCase();
+            const combined = `${labelText} ${name} ${placeholder} ${ariaLabel} ${id} ${slot}`.toLowerCase();
 
             if (combined.includes(targetLabel)) score += 100;
-            if (targetLabel.includes('first') && combined.includes('first')) score += 50;
+            if (targetLabel.includes('first')) {
+                if (id === 'fname' || name === 'fname' || id.includes('first') || name.includes('first') || slot.includes('fname') || slot.includes('first')) score += 100;
+                if (id === 'lname' || name === 'lname' || id.includes('last') || name.includes('last') || slot.includes('lname') || slot.includes('last')) score -= 100;
+            }
             if (combined.includes('name') && !combined.includes('last')) score += 20;
-            if (combined.includes('last') && targetLabel.includes('first')) score -= 80;
 
             if (score >= 40) {
                 scored.push({ input: inp, score });

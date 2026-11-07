@@ -34,6 +34,13 @@ try
     // 4. Execute Service
     var service = new FormAutomationService(driver, profile);
     service.Execute();
+
+    // 5. Keep browser open if requested
+    if (Environment.GetEnvironmentVariable("KEEP_OPEN") == "1")
+    {
+        Console.WriteLine("\nBrowser kept open ($env:KEEP_OPEN=1). Press Enter in this terminal to close the browser...");
+        Console.ReadLine();
+    }
 }
 catch (Exception ex)
 {

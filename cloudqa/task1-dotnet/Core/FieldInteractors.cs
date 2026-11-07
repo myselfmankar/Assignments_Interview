@@ -12,10 +12,10 @@ public class FirstNameInteractor : IFieldInteractor
         _name = name;
     }
 
-    public bool Fill(IWebDriver driver, string contextDescription)
+    public bool Fill(IWebDriver driver, string contextDescription, IWebElement? container = null)
     {
         var js = (IJavaScriptExecutor)driver;
-        var element = js.ExecuteScript(ResilientEngineScripts.FindTextInputScript, "first name") as IWebElement;
+        var element = js.ExecuteScript(ResilientEngineScripts.FindTextInputScript, "first name", container) as IWebElement;
 
         if (element == null)
         {
@@ -52,11 +52,11 @@ public class GenderInteractor : IFieldInteractor
         _gender = gender;
     }
 
-    public bool Fill(IWebDriver driver, string contextDescription)
+    public bool Fill(IWebDriver driver, string contextDescription, IWebElement? container = null)
     {
         var js = (IJavaScriptExecutor)driver;
         var choiceString = _gender.ToString();
-        var element = js.ExecuteScript(ResilientEngineScripts.FindRadioChoiceScript, "gender", choiceString) as IWebElement;
+        var element = js.ExecuteScript(ResilientEngineScripts.FindRadioChoiceScript, "gender", choiceString, container) as IWebElement;
 
         if (element == null)
         {
@@ -92,10 +92,10 @@ public class StateInteractor : IFieldInteractor
         _state = state;
     }
 
-    public bool Fill(IWebDriver driver, string contextDescription)
+    public bool Fill(IWebDriver driver, string contextDescription, IWebElement? container = null)
     {
         var js = (IJavaScriptExecutor)driver;
-        var res = js.ExecuteScript(ResilientEngineScripts.FindDropdownScript, "state");
+        var res = js.ExecuteScript(ResilientEngineScripts.FindDropdownScript, "state", container);
 
         if (res is Dictionary<string, object> dict && dict.TryGetValue("element", out var elObj) && elObj is IWebElement el)
         {
