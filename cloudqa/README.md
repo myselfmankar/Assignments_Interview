@@ -49,6 +49,10 @@ python agent.py --url https://phptravels.com/demo --test "Verify that the demo r
 
 Add `--headed` to show the browser window.
 
+## Presentation
+
+Open the [CloudQA browser presentation](presentation/index.html). Use the left/right arrow keys to navigate, press `F` for fullscreen, or print to PDF.
+
 ## Detailed guides
 
 - [Task 1 architecture, setup and limitations](task1-dotnet/README.md)
