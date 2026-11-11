@@ -1,6 +1,6 @@
 # CloudQA Practical Assessment
 
-Two implementations for the CloudQA assessment. Both automate browsers with Selenium, but they are **independent projects**.
+Two independent implementations for the CloudQA assessment. Both automate browsers with Selenium without relying on fragile fixed XPath or CSS selectors.
 
 ![CloudQA architecture overview](assets/cloudqa-overview.svg)
 
@@ -8,32 +8,40 @@ Two implementations for the CloudQA assessment. Both automate browsers with Sele
 
 | | Task 1 | Task 2 |
 |---|---|---|
-| Purpose | Fill and verify three known form fields | Turn a plain-English test into a browser workflow |
+| Purpose | Fill and verify known form fields across standard DOM, multi-level Shadow DOMs, and nested iframes | Turn a plain-English test case into an automated browser workflow |
 | Stack | C#, .NET 10, Selenium | Python, Gemini, Selenium |
-| Planning | Fixed profile from environment variables | Gemini generates a JSON action plan |
-| Execution | C# field interactors + JavaScript helpers | Python action executor + Python-defined JavaScript locator |
-| Output | Per-context field verification summary | Workflow PASS / FAIL and failure screenshot |
+| Planning | Configurable profile from environment variables | Gemini generates a structured JSON action plan |
+| Execution | Scoped field interactors + tiered resilient JavaScript locator engine | Python action executor + semantic JavaScript locator engine |
+| Output | Per-context verification summary across 17 DOM/shadow/iframe contexts | Step-by-step verification, PASS / FAIL report, and failure screenshots |
 
-**Important:** Task 2 does not import, call, or reuse Task 1's C# classes. The implementations share an approach—semantic element discovery and verification—not code. They can be run and understood separately.
+> **Important:** Task 2 does not import, call, or reuse Task 1's C# classes. The implementations share an architectural philosophy—resilient semantic discovery and verification—not code.
 
-## Repository layout
+---
 
-- [task1-dotnet/](task1-dotnet/) — adaptive form automation for First Name, Gender and State.
-- [task2-agent/](task2-agent/) — natural-language browser testing agent powered by Gemini.
-- [assets/](assets/) — architecture diagrams used in these docs.
+## Repository Layout
 
-## Quick start
+- [`task1-dotnet/`](task1-dotnet/) — C# .NET resilient form automation for all DOM, nested Shadow DOM, and iframe contexts.
+- [`task2-agent/`](task2-agent/) — Natural-language browser testing agent powered by Gemini and Selenium.
+- [`assets/`](assets/) — Architecture and execution flow diagrams.
 
-### Task 1 — C# / Selenium
+---
+
+## Quick Start
+
+### Task 1 — C# / Selenium (.NET 10)
 
 Requires .NET SDK 10 and Google Chrome.
 
 ```powershell
+cd task1-dotnet
 $env:TARGET_URL = "https://app.cloudqa.io/home/AutomationPracticeForm"
 $env:FIRST_NAME = "Vaishnav"
 $env:GENDER = "Male"
-$env:STATE = "Maharashtra"
-dotnet run --project .\cloudqa\task1-dotnet\AdaptiveFormAutomation.csproj
+$env:STATE = "India"
+$env:HEADLESS = "0"  # Set to "1" for headless execution, "0" for visible browser
+$env:KEEP_OPEN = "1" # Set to "1" to pause before closing browser
+
+dotnet run
 ```
 
 ### Task 2 — Python / Gemini / Selenium
@@ -41,17 +49,16 @@ dotnet run --project .\cloudqa\task1-dotnet\AdaptiveFormAutomation.csproj
 Requires Python 3.10+, Google Chrome, and a Gemini API key.
 
 ```powershell
-cd cloudqa/task2-agent
+cd task2-agent
 pip install -r requirements.txt
 $env:GEMINI_API_KEY = "your-api-key"
-python agent.py --url https://phptravels.com/demo --test "Verify that the demo request form is displayed"
+
+python agent.py --url https://phptravels.com/demo --test "Verify that the demo request form is displayed with First Name, Last Name, Business Name and Email fields" --headed
 ```
 
-Add `--headed` to show the browser window.
+---
 
-## Detailed guides
+## Detailed Guides
 
-- [Task 1 architecture, setup and limitations](task1-dotnet/README.md)
-- [Task 2 architecture, setup and limitations](task2-agent/README.md)
-
-These are assessment prototypes; compatibility depends on the target page's accessible DOM and widget behavior.
+- [Task 1 Architecture, Setup, and Limitations](task1-dotnet/README.md)
+- [Task 2 Architecture, Setup, and Limitations](task2-agent/README.md)

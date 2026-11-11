@@ -1,10 +1,6 @@
-# Task 1: Resilient Form Automation
+# Task 1: Resilient Form Automation (C# / .NET / Selenium)
 
-Automates three fields on the CloudQA Automation Practice Form:
-
-- **First Name** — text input
-- **Gender** — radio option
-- **State** — dropdown
+Automates form verification across dynamically changing web pages without relying on fixed XPath or CSS selectors. Evaluated against the CloudQA practice page across 17 distinct form contexts.
 
 ## Architecture
 
@@ -12,37 +8,36 @@ Automates three fields on the CloudQA Automation Practice Form:
 
 ### What each part does
 
-1. **Program.cs** loads the target URL and form values from environment variables, then starts Chrome.
-2. **FormAutomationService** checks the root document and recursively visits iframe contexts (up to four levels).
-3. **Field interactors** handle First Name, Gender and State independently.
-4. **ResilientEngineScripts** contains JavaScript used to discover controls through the standard DOM and accessible open Shadow DOMs, then interact with and verify them.
-5. A context is recorded as passed only when all three field operations complete and verify.
+1. **`Program.cs`**: Loads target URL and profile values from environment variables, sets Chrome options, and orchestrates execution.
+2. **`FormAutomationService.cs`**: Discovers all distinct form containers in the document (standard `<form>` elements and shadow host custom elements) and recursively discovers and traverses iframes (standard, with ID, without ID, and nested inside shadow DOMs).
+3. **`FieldInteractors.cs` & `IFieldInteractor.cs`**: Independent interactors for First Name, Gender, and State with scoped container isolation. Also populates additional present fields (Last Name, DOB, Mobile, Email, Country, Hobbies, About, Agreement).
+4. **`ResilientEngineScripts.cs`**: Injected JavaScript engine executing tiered semantic discovery (ARIA labels, label associations, slots, names, placeholders, proximity fallback), interaction, and post-action value verification.
 
-## Key techniques
+## Key Techniques
 
-- Semantic matching using labels, ARIA attributes, names, placeholders and visible text.
-- Open Shadow DOM traversal; closed shadow roots are not accessible.
-- Iframe discovery without depending on frame IDs, bounded to four levels.
-- Geometry-based proximity fallback when semantic relationships are missing.
-- Native Selenium interaction first, with JavaScript fallback where needed.
-- Explicit checks after filling or selecting values.
+- **Semantic Multi-Tier Discovery**: Identifies controls via semantic attributes (`aria-label`, `<label for>`, enclosing labels, element name/id, slots, placeholders) rather than brittle positional selectors.
+- **Deep Open Shadow DOM Traversal**: Recursively traverses open shadow roots up to arbitrary nesting depth (tested through 6 nested shadow levels).
+- **Comprehensive Iframe Traversal**: Discovers and switches to light-DOM iframes (with ID and without ID) and deeply nested iframes residing inside Shadow DOM hosts (e.g. `<nestedshadow-iframe>`).
+- **Post-Action Verification**: Every interaction is confirmed by querying element state (`.value`, `.checked`, or dropdown selection verification).
 
-## Run
+## How to Run
 
-Requires .NET SDK 10 and Google Chrome. From the repository root, use PowerShell:
+Requires .NET SDK 10 and Google Chrome.
 
 ```powershell
+cd task1-dotnet
 $env:TARGET_URL = "https://app.cloudqa.io/home/AutomationPracticeForm"
 $env:FIRST_NAME = "Vaishnav"
 $env:GENDER = "Male"
-$env:STATE = "Maharashtra"
-$env:HEADLESS = "0" # Omit or set to 1 for headless mode
+$env:STATE = "India"
+$env:HEADLESS = "0"   # "0" for headed browser, "1" for headless
+$env:KEEP_OPEN = "1"  # "1" to pause before closing Chrome
 
-dotnet run --project .\cloudqa\task1-dotnet\AdaptiveFormAutomation.csproj
+dotnet run
 ```
 
-## Scope and limitations
+## Scope and Limitations
 
-The implementation is designed for the assessment's form and controlled DOM variations. It supports native selects and custom dropdowns whose opened options are exposed in the accessible DOM. Closed Shadow DOMs, inaccessible cross-origin frames and highly bespoke widgets may require additional handling.
-
-Task 1 is a standalone C# implementation. Task 2 is a separate Python agent; it does not call this project's classes or scripts.
+- **Open vs. Closed Shadow DOM**: Only open Shadow DOM roots (`mode: "open"`) can be inspected via JavaScript and Selenium. Closed shadow roots are inaccessible by browser security design.
+- **Cross-Origin Iframes**: Traversal is supported for same-origin and accessible frames. Cross-origin frames with strict `X-Frame-Options` or CSP restrictions require browser-level CDP intervention.
+- **Custom Dropdowns**: Supports native `<select>` and standard accessible combobox patterns (`role="combobox"` / `aria-haspopup="listbox"`). Bespoke canvas or non-standard custom widgets require custom interaction handlers.

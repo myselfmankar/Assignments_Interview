@@ -177,7 +177,7 @@ public class FormAutomationService
 
     private void PrintSummary()
     {
-        Console.WriteLine("\n                         EXECUTION RESULTS SUMMARY");
+        Console.WriteLine("\n  EXECUTION RESULTS SUMMARY");
         
         int passed = _results.Count(r => r.Success);
         int total = _results.Count;

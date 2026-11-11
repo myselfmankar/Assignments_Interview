@@ -8,16 +8,16 @@ Give the agent a test instruction in plain English. It inspects the page, asks G
 
 ### Execution flow
 
-1. **Input:** receive a target URL and plain-English test case.
-2. **Snapshot:** inspect visible controls and page context, including accessible open Shadow DOM and nested frames.
-3. **Planning:** Gemini returns a JSON list of browser actions.
-4. **Validation:** reject malformed plans, unsupported actions, missing targets/values, and plans without assertions.
+1. **Input:** Receives a target URL and plain-English test case.
+2. **Snapshot:** Inspects visible controls and page context, including accessible open Shadow DOM and nested frames.
+3. **Planning:** Gemini returns a structured JSON list of browser actions.
+4. **Validation:** Rejects malformed plans, unsupported actions, missing targets/values, and plans without assertions.
 5. **Execution:** Python runs the allow-listed actions using Selenium and its own semantic JavaScript locator.
-6. **Verification:** check step assertions and the final success condition. Report PASS / FAIL; save a timestamped screenshot on failure.
+6. **Verification:** Checks step assertions and the final success condition. Reports PASS / FAIL; saves a timestamped screenshot on failure.
 
-> Task 2 does not use Task 1's C# implementation. Its locator and executor are implemented independently in `agent.py`.
+> **Note:** Task 2 does not use Task 1's C# implementation. Its locator and executor are implemented independently in `agent.py`.
 
-## Tech stack
+## Tech Stack
 
 - **Python 3.10+**
 - **Selenium WebDriver** with Chrome
@@ -29,7 +29,7 @@ Give the agent a test instruction in plain English. It inspects the page, asks G
 ### 1. Install dependencies
 
 ```bash
-cd cloudqa/task2-agent
+cd task2-agent
 pip install -r requirements.txt
 ```
 
@@ -41,27 +41,25 @@ Windows PowerShell:
 $env:GEMINI_API_KEY = "your-api-key"
 ```
 
-Or put it in a local `.env` file in this directory.
+Or put it in a local `.env` file in the `task2-agent` directory.
 
 ### 3. Start a test
 
-```bash
-python agent.py --url https://phptravels.com/demo --test "Verify that the demo request form is displayed with First Name, Last Name, Business Name and Email fields"
+```powershell
+python agent.py --url https://phptravels.com/demo --test "Verify that the demo request form is displayed with First Name, Last Name, Business Name and Email fields" --headed
 ```
 
-Add `--headed` to show the browser window.
+## Unit Tests
 
-## Tests
-
-The deterministic planner-contract tests do not launch Chrome or call Gemini:
+The deterministic planner-contract tests do not launch Chrome or consume Gemini quota:
 
 ```bash
 pip install pytest
 pytest -q
 ```
 
-For an end-to-end run, Chrome, a valid Gemini API key, internet access and available API quota are required.
+## Scope and Limitations
 
-## Scope and limitations
-
-The agent supports the standard DOM, accessible open Shadow DOM and nested iframes up to four levels. Closed shadow roots, inaccessible cross-origin content, canvas-only controls and custom widgets without discoverable accessible options cannot be reliably automated. The generated plan is restricted to allow-listed browser actions; avoid running tests that could trigger irreversible actions on real accounts or production systems.
+- **DOM Accessibility**: Supports standard DOM, open Shadow DOM, and nested iframes up to 4 levels. Closed shadow roots, cross-origin restricted frames, and canvas-only controls cannot be automated.
+- **Allow-Listed Action Set**: The agent executes within a strict whitelist (`navigate`, `click`, `fill`, `select`, `wait`, `assert_text`, `assert_visible`). Irreversible external actions and raw shell execution are prohibited by design.
+- **Single-Turn Plan Generation**: The model plans against an initial DOM snapshot. Multi-page dynamic Single Page Application (SPA) state changes that render entirely new routes without page reloads require multi-turn conversational agents.
